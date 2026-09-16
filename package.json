@@ -1,0 +1,20 @@
+{
+  "name": "bomberman-arena",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "workspaces": [
+    "client",
+    "serveur"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moreau-Simon/BOMBERMAN-ARENA.git"
+  },
+  "author": "",
+  "license": "ISC"
+}
