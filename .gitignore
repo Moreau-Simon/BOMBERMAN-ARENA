@@ -1,3 +1,16 @@
+<<<<<<< HEAD
+node_modules/
+dist/
+build/
+.env
+coverage/
+*.log
+.DS_Store
+
+# Electron builds
+out/
+release/
+=======
 # Logs
 logs
 *.log
@@ -141,3 +154,4 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+>>>>>>> ece37b8430c654c440e3aba34dce7fe66b203a78
