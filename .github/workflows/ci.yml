@@ -1,0 +1,23 @@
+name: Bomberman Arena CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  build-lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: echo "Vérification que le projet compile (Hello World)"
+
+      - name: Linting
+        run: echo "Vérification du style de code (Hello World)"
+
+      - name: Tests
+        run: echo "Exécution des tests unitaires (Hello World)"
