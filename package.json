@@ -1,8 +1,12 @@
 {
   "name": "bomberman-arena",
   "version": "1.0.0",
-<<<<<<< HEAD
   "description": "Bomberman Arena - Architecture Simple",
+  "private": true,
+  "workspaces": [
+    "client",
+    "serveur"
+  ],
   "main": "src/client/main.ts",
   "scripts": {
     "start:client": "electron -r ts-node/register src/client/main.ts",
@@ -24,18 +28,6 @@
     "@types/jest": "^29.5.5",
     "eslint": "^8.52.0",
     "prettier": "^3.0.3"
-  }
-}
-=======
-  "description": "",
-  "private": true,
-  "workspaces": [
-    "client",
-    "serveur"
-  ],
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -44,4 +36,3 @@
   "author": "",
   "license": "ISC"
 }
->>>>>>> ece37b8430c654c440e3aba34dce7fe66b203a78
