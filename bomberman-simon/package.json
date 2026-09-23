@@ -1,0 +1,47 @@
+{
+  "name": "bomberman-arena",
+  "version": "1.0.0",
+<<<<<<< HEAD
+  "description": "Bomberman Arena - Architecture Simple",
+  "main": "src/client/main.ts",
+  "scripts": {
+    "start:client": "electron -r ts-node/register src/client/main.ts",
+    "start:server": "ts-node src/server/index.ts",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.7",
+    "@types/ws": "^8.5.8",
+    "electron": "^27.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "@types/jest": "^29.5.5",
+    "eslint": "^8.52.0",
+    "prettier": "^3.0.3"
+  }
+}
+=======
+  "description": "",
+  "private": true,
+  "workspaces": [
+    "client",
+    "serveur"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moreau-Simon/BOMBERMAN-ARENA.git"
+  },
+  "author": "",
+  "license": "ISC"
+}
+>>>>>>> ece37b8430c654c440e3aba34dce7fe66b203a78
