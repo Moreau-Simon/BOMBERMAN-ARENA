@@ -1,0 +1,27 @@
+{
+  "name": "@bomberman-arena/server",
+  "version": "1.0.0",
+  "description": "Serveur autoritaire Bomberman Arena",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "uuid": "^9.0.0",
+    "@bomberman-arena/shared": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.8",
+    "@types/uuid": "^9.0.5",
+    "@types/node": "^20.8.7",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2"
+  },
+  "license": "ISC"
+}
