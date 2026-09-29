@@ -27,6 +27,7 @@ const engine = new GameEngine();
 
 /** Map associant chaque WebSocket à l'ID du joueur. */
 const clientMap = new Map<WebSocket, string>();
+let gameStartTimeout: NodeJS.Timeout | null = null;
 
 console.log(`🎮 [Bomberman Arena] Serveur démarré sur le port ${SERVER_PORT}`);
 console.log('   En attente de joueurs...');
@@ -95,9 +96,22 @@ wss.on('connection', (ws: WebSocket) => {
             payload: { playerId, playerName: message.payload.playerName },
           });
 
-          // Lancer la partie dès que 1 joueur est là (pour les tests)
-          if (clientMap.size >= 1) {
-            console.log('🚀 Lancement de la partie !');
+          // Lancer le décompte de 30s dès que le 1er joueur se connecte
+          if (!gameStartTimeout && engine.getState().phase === 'WAITING') {
+            console.log('⏳ Premier joueur rejoint. Lancement de la partie dans 30 secondes...');
+            gameStartTimeout = setTimeout(() => {
+              console.log('🚀 Lancement de la partie !');
+              broadcast({ type: 'SERVER_GAME_START' });
+              engine.start();
+              gameStartTimeout = null;
+            }, 30000);
+          }
+
+          // Si la salle est pleine (ex: 4 joueurs), lancer immédiatement
+          if (clientMap.size >= 4 && gameStartTimeout) {
+            clearTimeout(gameStartTimeout);
+            gameStartTimeout = null;
+            console.log('🚀 Salle pleine ! Lancement immédiat de la partie !');
             broadcast({ type: 'SERVER_GAME_START' });
             engine.start();
           }
