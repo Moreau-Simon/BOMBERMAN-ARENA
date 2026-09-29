@@ -43,16 +43,18 @@ export class NetworkManager {
 
     // UI → Join
     this.eventBus.on('ui:play', (payload) => {
-      this.connect(payload.playerName);
+      this.connect(payload.playerName, payload.serverIp);
     });
   }
 
   /**
    * Établit la connexion WebSocket et envoie un message de join.
    * @param playerName Nom du joueur.
+   * @param serverIp Adresse IP du serveur WebSocket (défaut: localhost).
    */
-  connect(playerName: string): void {
-    const url = `ws://localhost:${SERVER_PORT}`;
+  connect(playerName: string, serverIp?: string): void {
+    const host = serverIp && serverIp.trim() !== '' ? serverIp.trim() : 'localhost';
+    const url = `ws://${host}:${SERVER_PORT}`;
     console.log(`[NetworkManager] Connexion à ${url}...`);
 
     this.ws = new WebSocket(url);
