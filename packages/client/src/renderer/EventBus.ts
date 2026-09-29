@@ -39,7 +39,7 @@ export interface EventMap {
   'game:over': void;
 
   // ─── Événements UI ────────────────────────────────────────────
-  'ui:play': { playerName: string };
+  'ui:play': { playerName: string; serverIp?: string };
   'ui:show_game': void;
 }
 

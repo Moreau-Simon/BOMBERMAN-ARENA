@@ -15,6 +15,7 @@ export class UIManager {
   private homeScreen: HTMLElement;
   private gameScreen: HTMLElement;
   private playerNameInput: HTMLInputElement;
+  private serverIpInput: HTMLInputElement;
   private hudPlayer: HTMLElement;
   private hudStatus: HTMLElement;
 
@@ -23,6 +24,7 @@ export class UIManager {
     this.homeScreen = document.getElementById('home-screen')!;
     this.gameScreen = document.getElementById('game-screen')!;
     this.playerNameInput = document.getElementById('playerName') as HTMLInputElement;
+    this.serverIpInput = document.getElementById('serverIp') as HTMLInputElement;
     this.hudPlayer = document.getElementById('hud-player')!;
     this.hudStatus = document.getElementById('hud-status')!;
 
@@ -38,7 +40,8 @@ export class UIManager {
 
     btnPlay.addEventListener('click', () => {
       const name = this.playerNameInput.value.trim() || 'PLAYER';
-      this.eventBus.emit('ui:play', { playerName: name });
+      const ip = this.serverIpInput ? (this.serverIpInput.value.trim() || 'localhost') : 'localhost';
+      this.eventBus.emit('ui:play', { playerName: name, serverIp: ip });
     });
 
     // Permettre de lancer avec Entrée

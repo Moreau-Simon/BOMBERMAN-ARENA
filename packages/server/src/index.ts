@@ -96,22 +96,9 @@ wss.on('connection', (ws: WebSocket) => {
             payload: { playerId, playerName: message.payload.playerName },
           });
 
-          // Lancer le décompte de 30s dès que le 1er joueur se connecte
-          if (!gameStartTimeout && engine.getState().phase === 'WAITING') {
-            console.log('⏳ Premier joueur rejoint. Lancement de la partie dans 30 secondes...');
-            gameStartTimeout = setTimeout(() => {
-              console.log('🚀 Lancement de la partie !');
-              broadcast({ type: 'SERVER_GAME_START' });
-              engine.start();
-              gameStartTimeout = null;
-            }, 30000);
-          }
-
-          // Si la salle est pleine (ex: 4 joueurs), lancer immédiatement
-          if (clientMap.size >= 4 && gameStartTimeout) {
-            clearTimeout(gameStartTimeout);
-            gameStartTimeout = null;
-            console.log('🚀 Salle pleine ! Lancement immédiat de la partie !');
+          // Démarrer la partie immédiatement dès qu'un joueur rejoint
+          if (engine.getState().phase === 'WAITING') {
+            console.log('🚀 Lancement immédiat de la partie !');
             broadcast({ type: 'SERVER_GAME_START' });
             engine.start();
           }
