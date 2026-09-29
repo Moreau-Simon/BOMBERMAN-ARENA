@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bomberman Arena</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ÉCRAN D'ACCUEIL                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="home-screen">
+    <div class="title-container">
+      <h1 class="game-title">BOMBERMAN</h1>
+      <p class="game-subtitle">A R E N A</p>
+    </div>
+
+    <div class="player-input">
+      <label for="playerName">ENTER YOUR NAME</label>
+      <input type="text" id="playerName" maxlength="12" placeholder="PLAYER" autocomplete="off">
+    </div>
+
+    <div class="menu-container">
+      <button class="menu-btn primary" id="btn-play">▶ PLAY</button>
+      <button class="menu-btn" id="btn-options">⚙ OPTIONS</button>
+    </div>
+
+    <div class="home-footer">
+      BOMBERMAN ARENA &copy; 2024 — v1.0.0
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ÉCRAN DE JEU                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="game-screen">
+    <div class="hud">
+      <span id="hud-player">PLAYER: ---</span>
+      <span id="hud-status" class="hud-status">CONNECTING...</span>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <!-- Renderer principal (chargé dynamiquement via ts-node pour le dev) -->
+  <script>
+    require('ts-node').register({ transpileOnly: true });
+    require('./renderer/index.ts');
+  </script>
+</body>
+</html>

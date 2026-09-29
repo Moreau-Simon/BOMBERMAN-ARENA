@@ -1,0 +1,11 @@
+{
+  "name": "@bomberman-arena/shared",
+  "version": "1.0.0",
+  "description": "Types et protocole partagés entre le client et le serveur",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "ISC"
+}

@@ -1,0 +1,217 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Bomberman Arena — Styles
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ─── Reset & Base ──────────────────────────────────────────────────── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+@font-face {
+  font-family: 'PressStart';
+  src: local('Press Start 2P');
+}
+
+body {
+  background-color: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'PressStart', 'Courier New', monospace;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ─── Écran d'accueil ───────────────────────────────────────────────── */
+#home-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+#home-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(255, 255, 255, 0.03) 4px
+  );
+  pointer-events: none;
+}
+
+.title-container {
+  text-align: center;
+  margin-bottom: 60px;
+  z-index: 1;
+}
+
+.game-title {
+  font-size: 36px;
+  color: #ff6b35;
+  text-shadow:
+    0 0 10px rgba(255, 107, 53, 0.5),
+    0 0 20px rgba(255, 107, 53, 0.3),
+    0 4px 0 #cc5500;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+}
+
+.game-subtitle {
+  font-size: 14px;
+  color: #e94560;
+  text-shadow: 0 0 10px rgba(233, 69, 96, 0.4);
+  letter-spacing: 6px;
+}
+
+/* ─── Menu Buttons ──────────────────────────────────────────────────── */
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  z-index: 1;
+}
+
+.menu-btn {
+  font-family: 'PressStart', 'Courier New', monospace;
+  font-size: 14px;
+  padding: 16px 48px;
+  border: 2px solid #e94560;
+  background: transparent;
+  color: #e94560;
+  cursor: pointer;
+  letter-spacing: 2px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.menu-btn:hover {
+  background: #e94560;
+  color: #1a1a2e;
+  box-shadow: 0 0 20px rgba(233, 69, 96, 0.4);
+  transform: scale(1.05);
+}
+
+.menu-btn:active {
+  transform: scale(0.98);
+}
+
+.menu-btn.primary {
+  border-color: #ff6b35;
+  color: #ff6b35;
+}
+
+.menu-btn.primary:hover {
+  background: #ff6b35;
+  color: #1a1a2e;
+  box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+}
+
+/* ─── Input Joueur ──────────────────────────────────────────────────── */
+.player-input {
+  margin-bottom: 30px;
+  text-align: center;
+  z-index: 1;
+}
+
+.player-input label {
+  display: block;
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.player-input input {
+  font-family: 'PressStart', 'Courier New', monospace;
+  font-size: 12px;
+  padding: 10px 20px;
+  border: 2px solid #333;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  text-align: center;
+  outline: none;
+  width: 280px;
+  transition: border-color 0.2s ease;
+}
+
+.player-input input:focus {
+  border-color: #ff6b35;
+}
+
+/* ─── Footer ────────────────────────────────────────────────────────── */
+.home-footer {
+  position: absolute;
+  bottom: 20px;
+  font-size: 8px;
+  color: #444;
+  letter-spacing: 2px;
+  z-index: 1;
+}
+
+/* ─── Écran de jeu ──────────────────────────────────────────────────── */
+#game-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: #1a1a2e;
+}
+
+#game-screen.active {
+  display: flex;
+}
+
+#home-screen.hidden {
+  display: none;
+}
+
+/* ─── Canvas de jeu ─────────────────────────────────────────────────── */
+#gameCanvas {
+  border: 3px solid #333;
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── HUD ───────────────────────────────────────────────────────────── */
+.hud {
+  display: flex;
+  justify-content: space-between;
+  width: 720px;
+  padding: 10px 0;
+  font-size: 10px;
+  color: #888;
+  letter-spacing: 1px;
+}
+
+.hud-status {
+  color: #4ecca3;
+}
+
+/* ─── Animation de pulsation pour le bouton Play ────────────────────── */
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 107, 53, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(255, 107, 53, 0.6); }
+}
+
+.menu-btn.primary {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.menu-btn.primary:hover {
+  animation: none;
+}
