@@ -96,9 +96,9 @@ wss.on('connection', (ws: WebSocket) => {
             payload: { playerId, playerName: message.payload.playerName },
           });
 
-          // Démarrer la partie immédiatement dès qu'un joueur rejoint
+          // Démarrer la boucle de jeu du serveur pour envoyer les mises à jour en temps réel
           if (engine.getState().phase === 'WAITING') {
-            console.log('🚀 Lancement immédiat de la partie !');
+            console.log('🚀 Lancement du moteur de jeu !');
             broadcast({ type: 'SERVER_GAME_START' });
             engine.start();
           }
