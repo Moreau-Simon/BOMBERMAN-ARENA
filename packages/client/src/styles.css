@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   Bomberman Arena — Styles
+   Bomberman Arena — Styles : Thème Duel "Urbain vs Campagne"
    ═══════════════════════════════════════════════════════════════════════ */
 
 /* ─── Reset & Base ──────────────────────────────────────────────────── */
@@ -9,7 +9,6 @@
   box-sizing: border-box;
 }
 
-/* Utilitaire : cache n'importe quel élément */
 .hidden {
   display: none !important;
 }
@@ -20,7 +19,7 @@
 }
 
 body {
-  background-color: #1a1a2e;
+  background-color: #0b0f19;
   color: #e0e0e0;
   font-family: 'PressStart', 'Courier New', monospace;
   overflow: hidden;
@@ -28,199 +27,306 @@ body {
   height: 100vh;
 }
 
-/* ─── Écran d'accueil ───────────────────────────────────────────────── */
+/* ─── Écran d'accueil : Fond du Duel Urbain vs Campagne ─────────────── */
 #home-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  width: 100vw;
+  background-color: #0b0f19;
   position: relative;
   overflow: hidden;
 }
 
-#home-screen::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(255, 255, 255, 0.03) 2px,
-    rgba(255, 255, 255, 0.03) 4px
-  );
-  pointer-events: none;
-}
-
-.title-container {
-  text-align: center;
-  margin-bottom: 60px;
-  z-index: 1;
-}
-
-.game-title {
-  font-size: 36px;
-  color: #ff6b35;
-  text-shadow:
-    0 0 10px rgba(255, 107, 53, 0.5),
-    0 0 20px rgba(255, 107, 53, 0.3),
-    0 4px 0 #cc5500;
-  letter-spacing: 4px;
-  margin-bottom: 10px;
-}
-
-.game-subtitle {
-  font-size: 14px;
-  color: #e94560;
-  text-shadow: 0 0 10px rgba(233, 69, 96, 0.4);
-  letter-spacing: 6px;
-}
-
-/* ─── Menu Buttons ──────────────────────────────────────────────────── */
-.menu-container {
+/* Scène centrale de l'illustration avec ratio adapté */
+.menu-stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #080c14 url('../../../assets/menu_bg.jpg') no-repeat center center;
+  background-size: cover;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  z-index: 1;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 24px;
 }
 
-.menu-btn {
+/* Zone des boutons centrée en bas */
+.menu-buttons-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 34px;
+  z-index: 20;
+}
+
+/* Boutons Arcade Rétro fidèles au mockup */
+.arcade-btn {
   font-family: 'PressStart', 'Courier New', monospace;
-  font-size: 14px;
-  padding: 16px 48px;
-  border: 2px solid #e94560;
-  background: transparent;
-  color: #e94560;
+  font-size: 13px;
+  width: 220px;
+  height: 44px;
+  letter-spacing: 2px;
   cursor: pointer;
-  letter-spacing: 2px;
-  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow:
+    -1.5px -1.5px 0 #000,
+     1.5px -1.5px 0 #000,
+    -1.5px  1.5px 0 #000,
+     1.5px  1.5px 0 #000,
+     0 2px 4px rgba(0, 0, 0, 0.9);
+  border-radius: 6px;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
+  user-select: none;
 }
 
-.menu-btn:hover {
-  background: #e94560;
-  color: #1a1a2e;
-  box-shadow: 0 0 20px rgba(233, 69, 96, 0.4);
-  transform: scale(1.05);
+/* Bouton Métal (JOUER) */
+.arcade-btn.btn-metal {
+  background: linear-gradient(180deg, #6c7a89 0%, #465362 50%, #2f3640 100%);
+  border: 3px solid #1a2228;
+  box-shadow:
+    inset 2px 2px 0 #a4b0be,
+    inset -2px -2px 0 #1a2228,
+    0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
-.menu-btn:active {
-  transform: scale(0.98);
+.arcade-btn.btn-metal:hover {
+  background: linear-gradient(180deg, #8192a5 0%, #59697a 50%, #39424e 100%);
+  box-shadow:
+    inset 2px 2px 0 #dcdde1,
+    inset -2px -2px 0 #1a2228,
+    0 0 16px rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
 }
 
-.menu-btn.primary {
-  border-color: #ff6b35;
-  color: #ff6b35;
+.arcade-btn.btn-metal:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 0 #1a2228,
+    inset -2px -2px 0 #a4b0be;
 }
 
-.menu-btn.primary:hover {
-  background: #ff6b35;
-  color: #1a1a2e;
-  box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+/* Boutons Bois (OPTIONS et QUITTER) */
+.arcade-btn.btn-wood,
+.arcade-btn.btn-quit {
+  background: linear-gradient(180deg, #795548 0%, #5d4037 50%, #3e2723 100%);
+  border: 3px solid #1c100a;
+  box-shadow:
+    inset 2px 2px 0 #a1887f,
+    inset -2px -2px 0 #1c100a,
+    0 4px 12px rgba(0, 0, 0, 0.6);
 }
 
-/* ─── Input Joueur ──────────────────────────────────────────────────── */
-.player-input {
-  margin-bottom: 30px;
-  text-align: center;
-  z-index: 1;
+.arcade-btn.btn-wood:hover,
+.arcade-btn.btn-quit:hover {
+  background: linear-gradient(180deg, #8d6e63 0%, #6d4c41 50%, #4e342e 100%);
+  box-shadow:
+    inset 2px 2px 0 #bcaaa4,
+    inset -2px -2px 0 #1c100a,
+    0 0 16px rgba(255, 167, 38, 0.35);
+  transform: translateY(-2px);
 }
 
-.player-input label {
-  display: block;
+.arcade-btn.btn-wood:active,
+.arcade-btn.btn-quit:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 0 #1c100a,
+    inset -2px -2px 0 #a1887f;
+}
+
+/* Pill de configuration Joueur (discrète en haut à gauche) */
+.player-config-pill {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.player-config-pill .config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.player-config-pill label {
+  font-size: 8px;
+  color: #ffd32a;
+  letter-spacing: 1.5px;
+  font-family: 'PressStart', monospace;
+}
+
+.player-config-pill input {
+  font-family: 'PressStart', monospace;
   font-size: 10px;
-  color: #888;
-  margin-bottom: 10px;
-  letter-spacing: 2px;
-}
-
-.player-input input {
-  font-family: 'PressStart', 'Courier New', monospace;
-  font-size: 12px;
-  padding: 10px 20px;
-  border: 2px solid #333;
-  background: rgba(255, 255, 255, 0.05);
-  color: #e0e0e0;
-  text-align: center;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 10px;
   outline: none;
-  width: 280px;
-  transition: border-color 0.2s ease;
+  width: 130px;
+  text-align: center;
+  transition: all 0.2s ease;
 }
 
-.player-input input:focus {
-  border-color: #ff6b35;
+.player-config-pill input:focus {
+  border-color: #ffd32a;
+  box-shadow: 0 0 12px rgba(255, 211, 42, 0.5);
+  background: rgba(0, 0, 0, 0.7);
 }
+
 
 /* ─── Footer ────────────────────────────────────────────────────────── */
 .home-footer {
   position: absolute;
-  bottom: 20px;
+  bottom: 18px;
   font-size: 8px;
-  color: #444;
+  color: #4b5563;
   letter-spacing: 2px;
   z-index: 1;
 }
 
-/* ─── Écran de jeu ──────────────────────────────────────────────────── */
-#game-screen {
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background: #1a1a2e;
-}
-
-/* ─── Écran lobby ───────────────────────────────────────────────────── */
+/* ─── Écran Lobby ───────────────────────────────────────────────────── */
 #lobby-screen {
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 28px;
   height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(118deg, #0d1424 0%, #16243b 50%, #0b1a13 100%);
+  position: relative;
+}
+
+.lobby-header {
+  text-align: center;
 }
 
 .lobby-title {
-  font-family: 'PressStart', 'Courier New', monospace;
-  font-size: 18px;
+  font-family: 'PressStart', monospace;
+  font-size: 20px;
+  color: #ffd32a;
+  letter-spacing: 4px;
+  text-shadow: 0 0 15px rgba(255, 211, 42, 0.5);
+  margin-bottom: 10px;
+}
+
+.arena-tag {
+  font-size: 10px;
+  color: #ced6e0;
+  letter-spacing: 2px;
+}
+
+.arena-tag span:first-child {
   color: #ff6b35;
-  letter-spacing: 3px;
-  text-shadow: 0 0 10px rgba(255,107,53,0.5);
+  font-weight: bold;
+}
+
+.arena-tag span:last-child {
+  color: #2ed573;
+  font-weight: bold;
 }
 
 .player-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-width: 300px;
+  gap: 12px;
+  min-width: 340px;
 }
 
 .player-list li {
-  font-family: 'PressStart', 'Courier New', monospace;
+  font-family: 'PressStart', monospace;
   font-size: 12px;
-  color: #e0e0e0;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid #333;
-  padding: 10px 20px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 14px 24px;
   text-align: center;
   letter-spacing: 2px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(6px);
 }
 
+/* ─── Écran de Jeu Dynamique (Adaptive Game Screen) ─────────────────── */
+#game-screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  background: #0d111a;
+  transition: background 0.5s ease;
+}
+
+/* Ambiance Urbaine en Jeu */
+#game-screen.theme-urban {
+  background: radial-gradient(circle at center, #1b263b 0%, #080d14 100%);
+}
+
+#game-screen.theme-urban #gameCanvas {
+  border: 3px solid #ff6b35;
+  box-shadow: 0 0 30px rgba(255, 107, 53, 0.45), inset 0 0 20px rgba(0, 0, 0, 0.7);
+}
+
+#game-screen.theme-urban .hud {
+  color: #ff9f43;
+}
+
+#game-screen.theme-urban .hud-status {
+  color: #ff6b35;
+  text-shadow: 0 0 10px rgba(255, 107, 53, 0.6);
+}
+
+/* Ambiance Campagne en Jeu */
+#game-screen.theme-countryside {
+  background: radial-gradient(circle at center, #163324 0%, #06140d 100%);
+}
+
+#game-screen.theme-countryside #gameCanvas {
+  border: 3px solid #2ed573;
+  box-shadow: 0 0 30px rgba(46, 213, 115, 0.45), inset 0 0 20px rgba(0, 0, 0, 0.7);
+}
+
+#game-screen.theme-countryside .hud {
+  color: #7bed9f;
+}
+
+#game-screen.theme-countryside .hud-status {
+  color: #2ed573;
+  text-shadow: 0 0 10px rgba(46, 213, 115, 0.6);
+}
 
 /* ─── Canvas de jeu ─────────────────────────────────────────────────── */
 #gameCanvas {
-  border: 3px solid #333;
+  border: 3px solid #444;
   box-shadow:
-    0 0 20px rgba(0, 0, 0, 0.5),
-    inset 0 0 20px rgba(0, 0, 0, 0.3);
+    0 0 25px rgba(0, 0, 0, 0.6),
+    inset 0 0 20px rgba(0, 0, 0, 0.4);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
 /* ─── HUD ───────────────────────────────────────────────────────────── */
@@ -232,20 +338,22 @@ body {
   font-size: 10px;
   color: #888;
   letter-spacing: 1px;
+  transition: color 0.4s ease;
 }
 
 .hud-status {
   color: #4ecca3;
+  transition: color 0.4s ease;
 }
 
 /* ─── Animation de pulsation pour le bouton Play ────────────────────── */
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 0 5px rgba(255, 107, 53, 0.3); }
-  50% { box-shadow: 0 0 25px rgba(255, 107, 53, 0.6); }
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 211, 42, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(255, 211, 42, 0.7); }
 }
 
 .menu-btn.primary {
-  animation: pulse 2s ease-in-out infinite;
+  animation: pulse 2.2s ease-in-out infinite;
 }
 
 .menu-btn.primary:hover {

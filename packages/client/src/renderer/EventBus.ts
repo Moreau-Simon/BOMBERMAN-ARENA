@@ -35,7 +35,7 @@ export interface EventMap {
 
   // ─── Événements d'état du jeu ─────────────────────────────────
   'state:update': import('@bomberman-arena/shared').GameState;
-  'game:start': void;
+  'game:start': { theme?: import('@bomberman-arena/shared').MapTheme } | void;
   'game:over': void;
   'game:quit': void;
   'game:spectate': void;
