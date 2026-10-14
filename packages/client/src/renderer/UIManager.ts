@@ -9,6 +9,7 @@
 import { EventBus } from './EventBus';
 import { IntroOverlay } from './IntroOverlay';
 import { DeathOverlay } from './DeathOverlay';
+import { SettingsMenu } from './SettingsMenu';
 
 export class UIManager {
   private homeScreen:      HTMLElement;
@@ -24,9 +25,11 @@ export class UIManager {
   private introOverlay?:    IntroOverlay;
   private deathOverlay?:    DeathOverlay;
   private spectatorBanner?: HTMLElement;
+  private settingsMenu:     SettingsMenu;
 
   private localPlayerId:   string | null = null;
   private localPlayerName: string = 'PLAYER';
+  private currentTheme:    string = 'URBAN';
   private isDead:          boolean = false;
   private isSpectating:    boolean = false;
 
@@ -47,6 +50,12 @@ export class UIManager {
     this.homeScreen.style.display  = 'flex';
     this.lobbyScreen.style.display = 'none';
     this.gameScreen.style.display  = 'none';
+
+    // Initialiser le menu burger de paramètres
+    this.settingsMenu = new SettingsMenu(this.eventBus, {
+      onQuitGame: () => this.handleQuit(),
+      isGameActive: () => this.gameScreen.style.display === 'flex' || this.lobbyScreen.style.display === 'flex',
+    });
 
     this.setupListeners();
     this.subscribeToEvents();
@@ -71,9 +80,33 @@ export class UIManager {
     this.readyButton.addEventListener('click', () => {
       console.log('[UIManager] Ready cliqué');
       this.readyButton.disabled = true;
-      this.readyButton.textContent = '⏳ EN ATTENTE...';
+      this.readyButton.textContent = 'EN ATTENTE...';
       this.eventBus.emit('lobby:ready', undefined);
     });
+
+    // Bouton OPTIONS sur la page d'accueil
+    const btnOptions = document.getElementById('btn-options');
+    if (btnOptions) {
+      btnOptions.addEventListener('click', () => {
+        this.settingsMenu.open();
+      });
+    }
+
+    // Bouton QUITTER sur la page d'accueil
+    const btnQuit = document.getElementById('btn-quit');
+    if (btnQuit) {
+      btnQuit.addEventListener('click', () => {
+        try {
+          if (typeof window !== 'undefined' && (window as any).require) {
+            (window as any).require('electron').ipcRenderer.send('app:quit');
+          } else {
+            window.close();
+          }
+        } catch {
+          window.close();
+        }
+      });
+    }
   }
 
   // ── Écouteurs EventBus ───────────────────────────────────────────────
@@ -84,9 +117,10 @@ export class UIManager {
     });
 
     // Moteur dit : lancez l'intro
-    this.eventBus.on('lobby:intro_start', ({ message }: { theme: any; message: string }) => {
-      console.log('[UIManager] Intro overlay → message:', message);
-      this.introOverlay = new IntroOverlay(this.eventBus, message, 3000);
+    this.eventBus.on('lobby:intro_start', ({ theme, message }: { theme: any; message: string }) => {
+      console.log('[UIManager] Intro overlay → theme:', theme, 'message:', message);
+      this.currentTheme = theme ?? 'URBAN';
+      this.introOverlay = new IntroOverlay(this.eventBus, message, this.currentTheme, 3000);
     });
 
     // Intro terminée → afficher le jeu
@@ -156,8 +190,8 @@ export class UIManager {
     const banner = document.createElement('div');
     banner.id = 'spectator-banner';
     banner.style.position = 'fixed';
-    banner.style.top = '16px';
-    banner.style.right = '20px';
+    banner.style.top = '70px';
+    banner.style.right = '16px';
     banner.style.zIndex = '500';
     banner.style.background = 'rgba(15, 20, 30, 0.85)';
     banner.style.border = '1px solid rgba(55, 66, 250, 0.4)';
@@ -274,25 +308,29 @@ export class UIManager {
     this.homeScreen.style.display  = 'flex';
     this.lobbyScreen.style.display = 'none';
     this.gameScreen.style.display  = 'none';
+    this.settingsMenu.hideBurger();
 
     this.readyButton.disabled = false;
-    this.readyButton.textContent = '✔ READY';
+    this.readyButton.textContent = 'READY';
   }
 
   private showLobby(playerName: string): void {
     this.homeScreen.style.display  = 'none';
     this.lobbyScreen.style.display = 'flex';
     this.gameScreen.style.display  = 'none';
+    this.settingsMenu.hideBurger();
     // Peupler la liste
     this.playerList.innerHTML = `<li>${playerName}</li>`;
     this.readyButton.disabled = false;
-    this.readyButton.textContent = '✔ READY';
+    this.readyButton.textContent = 'READY';
   }
 
   private showGame(): void {
     this.homeScreen.style.display  = 'none';
     this.lobbyScreen.style.display = 'none';
     this.gameScreen.style.display  = 'flex';
+    this.gameScreen.className      = this.currentTheme === 'COUNTRYSIDE' ? 'theme-countryside' : 'theme-urban';
+    this.settingsMenu.showBurger();
   }
 }
 

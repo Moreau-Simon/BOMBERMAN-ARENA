@@ -8,14 +8,26 @@
  * - Renderer (index.html + scripts) : contexte navigateur
  */
 
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
+
+
+
+const assetsDir = path.resolve(__dirname, '..', '..', '..', 'assets');
+try {
+  const jpgPath = path.join(assetsDir, 'menu_bg.jpg');
+  const pngPath = path.join(assetsDir, 'menu_bg.png');
+  if (fs.existsSync(jpgPath) && !fs.existsSync(pngPath)) {
+    fs.copyFileSync(jpgPath, pngPath);
+  }
+} catch (e) {}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 780,
     height: 720,
-    resizable: false,
+    resizable: true,
     title: 'Bomberman Arena',
     webPreferences: {
       nodeIntegration: true,
@@ -31,6 +43,20 @@ function createWindow(): void {
 
   // Masquer la barre de menu pour un rendu plus propre
   mainWindow.setMenuBarVisibility(false);
+
+  // ── IPC Handlers ──────────────────────────────────────────────────
+  ipcMain.on('window:toggle_fullscreen', () => {
+    const isFull = mainWindow.isFullScreen();
+    mainWindow.setFullScreen(!isFull);
+  });
+
+  ipcMain.handle('window:is_fullscreen', () => {
+    return mainWindow.isFullScreen();
+  });
+
+  ipcMain.on('app:quit', () => {
+    app.quit();
+  });
 }
 
 app.whenReady().then(() => {

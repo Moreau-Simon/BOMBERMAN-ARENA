@@ -28,8 +28,8 @@ const ASSETS_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'assets');
  * ET ajouter ici l'entrée + le fichier PNG dans assets/maps/.
  */
 const THEME_TILESETS: Record<string, string> = {
-  URBAN:       path.join(ASSETS_DIR, 'maps', 'blockbuster.png'),
-  COUNTRYSIDE: path.join(ASSETS_DIR, 'maps', 'blockbuster.png'), // même spritesheet pour l'instant
+  URBAN:       path.join(ASSETS_DIR, 'maps', 'urbain.png'),
+  COUNTRYSIDE: path.join(ASSETS_DIR, 'maps', 'campagne.png'),
   // FUTURE: FOREST: path.join(ASSETS_DIR, 'maps', 'forest.png'),
 };
 
@@ -170,7 +170,7 @@ export class GameRenderer {
     this.ctx.imageSmoothingEnabled = false;
 
     // Charger les 3 spritesheets
-    this.mapImg = this.loadImage(path.join(ASSETS_DIR, 'maps', 'blockbuster.png'));
+    this.mapImg = this.loadImage(THEME_TILESETS['URBAN']);
     this.charImg = this.loadImage(path.join(ASSETS_DIR, 'mobs', 'bomberman.png'));
     this.effectsImg = this.loadImage(path.join(ASSETS_DIR, 'effects', 'items-effects.png'));
 

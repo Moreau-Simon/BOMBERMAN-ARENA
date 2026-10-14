@@ -25,6 +25,8 @@ import { GameRenderer } from './GameRenderer';
 import { UIManager } from './UIManager';
 import { LocalGameEngine } from './LocalGameEngine';
 
+
+
 // ─── Initialisation ───────────────────────────────────────────────────
 
 /** Bus d'événements unique partagé par tous les modules. */
