@@ -29,7 +29,7 @@ const engine = new GameEngine();
 const clientMap = new Map<WebSocket, string>();
 let gameStartTimeout: NodeJS.Timeout | null = null;
 
-console.log(`🎮 [Bomberman Arena] Serveur démarré sur le port ${SERVER_PORT}`);
+console.log(`[Bomberman Arena] Serveur démarré sur le port ${SERVER_PORT}`);
 console.log('   En attente de joueurs...');
 
 /**
@@ -63,7 +63,7 @@ engine.setOnTick((state) => {
 
 // ─── Gestion des connexions WebSocket ─────────────────────────────────
 wss.on('connection', (ws: WebSocket) => {
-  console.log('🔌 Nouvelle connexion WebSocket');
+  console.log(' Joueur connecté');
 
   ws.on('message', (data: Buffer) => {
     try {
@@ -82,7 +82,7 @@ wss.on('connection', (ws: WebSocket) => {
           }
 
           clientMap.set(ws, playerId);
-          console.log(`✅ Joueur "${message.payload.playerName}" rejoint (ID: ${playerId})`);
+          console.log(` Joueur "${message.payload.playerName}" rejoint (ID: ${playerId})`);
 
           // Envoyer le welcome au joueur
           sendToClient(ws, {
@@ -98,7 +98,7 @@ wss.on('connection', (ws: WebSocket) => {
 
           // Démarrer la boucle de jeu du serveur pour envoyer les mises à jour en temps réel
           if (engine.getState().phase === 'WAITING') {
-            console.log('🚀 Lancement du moteur de jeu !');
+            console.log(' Lancement du moteur de jeu !');
             broadcast({ type: 'SERVER_GAME_START' });
             engine.start();
           }
@@ -115,7 +115,7 @@ wss.on('connection', (ws: WebSocket) => {
         }
       }
     } catch (err) {
-      console.error('❌ Message invalide reçu :', err);
+      console.error(' Message invalide reçu :', err);
     }
   });
 
@@ -124,11 +124,11 @@ wss.on('connection', (ws: WebSocket) => {
     if (playerId) {
       engine.removePlayer(playerId);
       clientMap.delete(ws);
-      console.log(`🔌 Joueur déconnecté (ID: ${playerId})`);
+      console.log(` Joueur déconnecté (ID: ${playerId})`);
     }
   });
 
   ws.on('error', (err) => {
-    console.error('❌ Erreur WebSocket :', err);
+    console.error(' Erreur WebSocket :', err);
   });
 });
