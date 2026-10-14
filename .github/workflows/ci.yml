@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 name: Bomberman Arena CI
 
 on:
@@ -21,3 +22,39 @@ jobs:
 
       - name: Tests
         run: echo "Exécution des tests unitaires (Hello World)"
+=======
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Lint
+      run: npm run lint
+      
+    - name: Run tests
+      run: npm run test
+      
+    - name: Build Server
+      run: npm run build:server --if-present
+      
+    - name: Build Client
+      run: npm run build:client --if-present
+>>>>>>> feature/backend-carte-deplacement

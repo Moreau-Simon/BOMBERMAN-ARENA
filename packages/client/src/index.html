@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bomberman Arena</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ÉCRAN D'ACCUEIL                                                -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="home-screen">
+    <!-- Barre de configuration joueur discrète en haut à gauche -->
+    <div class="player-config-pill">
+      <div class="config-field">
+        <label for="playerName">PSEUDO</label>
+        <input type="text" id="playerName" maxlength="12" placeholder="PLAYER" autocomplete="off">
+      </div>
+      <div class="config-field">
+        <label for="serverIp">IP SERVEUR</label>
+        <input type="text" id="serverIp" placeholder="localhost" value="localhost" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Scène centrale du menu avec l'illustration et les 3 boutons du mockup -->
+    <div class="menu-stage">
+      <div class="menu-buttons-wrapper">
+        <button class="arcade-btn btn-metal" id="btn-play">JOUER</button>
+        <button class="arcade-btn btn-wood" id="btn-options">OPTIONS</button>
+        <button class="arcade-btn btn-quit" id="btn-quit">QUITTER</button>
+      </div>
+    </div>
+
+    <div class="home-footer">
+      BOMBERMAN ARENA © 2024 — VILLE vs CAMPAGNE
+    </div>
+  </div>
+
+
+
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ÉCRAN LOBBY                                                    -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="lobby-screen">
+    <div class="lobby-header">
+      <h2 class="lobby-title">LOBBY DE COMBAT</h2>
+      <div class="arena-tag">ARÈNES : <span>URBAIN</span> VS <span>CAMPAGNE</span></div>
+    </div>
+    <ul id="player-list" class="player-list"></ul>
+    <button class="menu-btn primary" id="btn-ready">READY</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ÉCRAN DE JEU                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="game-screen">
+    <div class="hud">
+      <span id="hud-player">PLAYER: ---</span>
+      <span id="hud-status" class="hud-status">CONNECTING...</span>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <!-- Renderer principal (chargé dynamiquement via ts-node pour le dev) -->
+  <script>
+    require('ts-node').register({ transpileOnly: true });
+    require('./renderer/index.ts');
+  </script>
+</body>
+
+</html>
