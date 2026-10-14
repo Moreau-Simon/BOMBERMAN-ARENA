@@ -18,8 +18,21 @@ import { GameState, CellType, PlayerState, Direction } from '@bomberman-arena/sh
 import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE } from '@bomberman-arena/shared';
 import * as path from 'path';
 
+
 // ─── Chemin vers les assets ─────────────────────────────────────────
 const ASSETS_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'assets');
+
+/**
+ * Table thème → fichier de tuiles de la map.
+ * Pour ajouter un nouveau thème : ajouter la valeur dans MAP_THEMES (shared/constants.ts)
+ * ET ajouter ici l'entrée + le fichier PNG dans assets/maps/.
+ */
+const THEME_TILESETS: Record<string, string> = {
+  URBAN:       path.join(ASSETS_DIR, 'maps', 'blockbuster.png'),
+  COUNTRYSIDE: path.join(ASSETS_DIR, 'maps', 'blockbuster.png'), // même spritesheet pour l'instant
+  // FUTURE: FOREST: path.join(ASSETS_DIR, 'maps', 'forest.png'),
+};
+
 
 // ─── Coordonnées des tuiles dans blockbuster.png (source 16x16) ────
 //
@@ -130,6 +143,7 @@ export class GameRenderer {
   private currentState: GameState | null = null;
   private playerId: string | null = null;
   private showDebug: boolean = false;
+  private currentTheme: string = 'URBAN';
 
   // ─── Spritesheets ─────────────────────────────────────────────
   private mapImg!: HTMLImageElement;
@@ -185,8 +199,18 @@ export class GameRenderer {
    */
   private subscribeToEvents(): void {
     this.eventBus.on('state:update', (state) => {
-      // Mettre à jour l'état serveur actuel
       this.currentState = state;
+    });
+
+    // Quand la partie démarre, recharger le tileset selon le thème choisi
+    this.eventBus.on('game:start', (payload: any) => {
+      const theme: string = payload?.theme ?? 'URBAN';
+      if (theme !== this.currentTheme) {
+        console.log(`[GameRenderer] Changement de thème : ${this.currentTheme} → ${theme}`);
+        this.currentTheme = theme;
+        this.reloadMapTileset(theme);
+      }
+      console.log('[GameRenderer] game:start reçu, thème =', theme);
     });
 
     this.eventBus.on('network:connected', (payload) => {
@@ -196,6 +220,26 @@ export class GameRenderer {
     this.eventBus.on('input:toggle_debug', () => {
       this.showDebug = !this.showDebug;
     });
+
+    this.eventBus.on('game:quit', () => {
+      this.currentState = null;
+      this.lastPositions.clear();
+      this.playerMoving.clear();
+    });
+  }
+
+  /** Recharge le tileset de la map selon le thème. */
+  private reloadMapTileset(theme: string): void {
+    const tilesetPath = THEME_TILESETS[theme] ?? THEME_TILESETS['URBAN'];
+    this.imagesLoaded--; // on va recharger 1 image
+    const img = new Image();
+    img.src = tilesetPath;
+    img.onload = () => {
+      this.imagesLoaded++;
+      console.log(`[GameRenderer] ✅ Tileset rechargé pour thème "${theme}"`);
+    };
+    img.onerror = () => console.error(`[GameRenderer] ❌ Tileset introuvable pour "${theme}": ${tilesetPath}`);
+    this.mapImg = img;
   }
 
   /**

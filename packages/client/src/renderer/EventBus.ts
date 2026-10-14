@@ -37,10 +37,17 @@ export interface EventMap {
   'state:update': import('@bomberman-arena/shared').GameState;
   'game:start': void;
   'game:over': void;
+  'game:quit': void;
+  'game:spectate': void;
 
   // ─── Événements UI ────────────────────────────────────────────
   'ui:play': { playerName: string; serverIp?: string };
   'ui:show_game': void;
+  // ─── Événements lobby ────────────────────────────────────────
+  'lobby:ready': void;
+  'lobby:all_ready': void;
+  'lobby:intro_start': { theme: import('@bomberman-arena/shared').MapTheme; message: string };
+  'lobby:intro_end': void;
 }
 
 type EventKey = keyof EventMap;

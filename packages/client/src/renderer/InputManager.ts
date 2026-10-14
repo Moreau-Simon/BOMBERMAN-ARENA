@@ -25,6 +25,9 @@ export class InputManager {
 
   constructor(private eventBus: EventBus) {
     this.setupKeyboardListeners();
+    this.eventBus.on('game:quit', () => {
+      this.keysDown.clear();
+    });
   }
 
   private setupKeyboardListeners(): void {

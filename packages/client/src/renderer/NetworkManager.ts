@@ -45,6 +45,16 @@ export class NetworkManager {
     this.eventBus.on('ui:play', (payload) => {
       this.connect(payload.playerName, payload.serverIp);
     });
+
+    // UI → Quitter la partie
+    this.eventBus.on('game:quit', () => {
+      if (this.ws) {
+        console.log('[NetworkManager] Fermeture de la connexion WebSocket suite à game:quit');
+        this.ws.close();
+        this.ws = null;
+      }
+      this.playerId = null;
+    });
   }
 
   /**

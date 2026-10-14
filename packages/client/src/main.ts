@@ -22,6 +22,10 @@ function createWindow(): void {
       contextIsolation: false,
     },
   });
+  // Forward renderer console messages to the main process (terminal)
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer] ${message}`);
+  });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
 

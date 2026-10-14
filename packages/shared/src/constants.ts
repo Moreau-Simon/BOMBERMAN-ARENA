@@ -47,10 +47,18 @@ export const MAX_PLAYERS = 4;
 /** Port WebSocket du serveur. */
 export const SERVER_PORT = 8080;
 
-/** Positions de spawn des joueurs (centres des cases de coin). */
+/** Positions de spawn des joueurs. */
 export const SPAWN_POSITIONS = [
-  { x: 0.5, y: 0.5 },
-  { x: MAP_WIDTH - 0.5, y: 0.5 },
-  { x: 0.5, y: MAP_HEIGHT - 0.5 },
-  { x: MAP_WIDTH - 0.5, y: MAP_HEIGHT - 0.5 },
+  { x: 1, y: 1 },
+  { x: MAP_WIDTH - 1.5, y: 1 },
+  { x: 1, y: MAP_HEIGHT - 1.5 },
+  { x: MAP_WIDTH - 1.5, y: MAP_HEIGHT - 1.5 },
 ];
+export const MAP_THEMES = ['URBAN', 'COUNTRYSIDE'] as const;
+export type MapTheme = typeof MAP_THEMES[number];
+
+/** Retourne aléatoirement l'un des thèmes de carte définis. */
+export function randomTheme(): MapTheme {
+  const idx = Math.floor(Math.random() * MAP_THEMES.length);
+  return MAP_THEMES[idx];
+}
