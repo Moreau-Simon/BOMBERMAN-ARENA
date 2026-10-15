@@ -77,34 +77,48 @@ const MAP_TILES: Record<string, SrcRect> = {
 
 // ─── Coordonnées du Bomberman blanc dans bomberman.png ──────────────
 //
-// Le spritesheet "Playable Characters" place le Bomberman blanc
-// en haut à gauche. Chaque frame mesure ~17x24 pixels.
-// Les animations sont organisées en lignes horizontales :
-//   Ligne 0 (y≈2)  : Marche vers le BAS     — 3 frames
-//   Ligne 1 (y≈28) : Marche vers le HAUT    — 3 frames
-//   Ligne 2 (y≈52) : Marche vers la GAUCHE  — 3 frames
-//   (Pour la DROITE, on utilise la ligne GAUCHE en miroir horizontal)
+// Analyse pixel-par-pixel du spritesheet "Playable Characters - Bomberman-2".
+// Image : 347×304 px, fond transparent (alpha = 0).
 //
-// L'idle (pas bouger) = frame 0 de la direction "BAS".
+// Les frames du Bomberman blanc sont en haut à gauche.
+// L'espacement horizontal est IRRÉGULIER (13-15 px par frame avec des
+// gaps de 2-3 px). On utilise donc un tableau de positions X fixes.
+//
+// 3 rangées d'animation de marche (idle = frame 0 de DOWN) :
+//   Rangée 0 (y=10..30) : Marche vers le BAS    — 3 frames utiles
+//   Rangée 1 (y=35..55) : Marche vers le HAUT   — 3 frames utiles
+//   Rangée 2 (y=60..80) : Marche vers la GAUCHE — 3 frames utiles
+//   (Pour la DROITE, on utilise GAUCHE + flip horizontal)
 // ────────────────────────────────────────────────────────────────────
 
-const CHAR_FRAME_W = 17;
-const CHAR_FRAME_H = 24;
-const CHAR_START_X = 2;
-const CHAR_GAP_X = 1;    // espace entre les frames horizontalement
+/** Hauteur d'une frame (pixels source) — identique pour toutes les directions */
+const CHAR_FRAME_H = 21;
+
+/** Nombre de frames d'animation par direction (marche cyclique) */
 const CHAR_FRAMES_PER_DIR = 3;
+
+/**
+ * Position X et largeur de chaque frame dans le spritesheet.
+ * Détectées par analyse automatique des colonnes non-transparentes.
+ * Les frames 0, 1, 2 sont les 3 poses de marche du Bomberman blanc.
+ */
+const CHAR_FRAMES_X: { x: number; w: number }[] = [
+  { x: 6,  w: 15 },   // Frame 0 : pose neutre / idle
+  { x: 23, w: 14 },   // Frame 1 : pied gauche avancé
+  { x: 40, w: 15 },   // Frame 2 : pied droit avancé
+];
 
 /** Y de départ de chaque direction dans le spritesheet */
 const CHAR_DIR_Y: Record<string, number> = {
-  DOWN:  2,
-  UP:    28,
-  LEFT:  52,
-  RIGHT: 52,  // On utilisera un flip horizontal
+  DOWN:  10,    // Rangée 0 : marche vers le BAS
+  UP:    35,    // Rangée 1 : marche vers le HAUT
+  LEFT:  60,    // Rangée 2 : marche vers la GAUCHE
+  RIGHT: 60,    // Même rangée que LEFT (flip horizontal appliqué au rendu)
 };
 
-/** Taille de rendu du personnage sur le canvas */
+/** Taille de rendu du personnage sur le canvas (upscale pixel art) */
 const CHAR_RENDER_W = 42;
-const CHAR_RENDER_H = 60;
+const CHAR_RENDER_H = 58;
 
 // ─── Coordonnées des bombes dans items-effects.png ──────────────────
 //
@@ -341,17 +355,50 @@ export class GameRenderer {
   }
 
   /**
-   * Écran de chargement / attente du serveur.
+   * Écran de chargement / attente du serveur avec animation du Bomberman.
    */
   private renderLoading(): void {
     const text = this.imagesLoaded < this.totalImages
       ? `Chargement des sprites... (${this.imagesLoaded}/${this.totalImages})`
       : 'En attente du serveur...';
 
+    const centerX = CANVAS_W / 2;
+    const centerY = CANVAS_H / 2;
+
+    // Si le sprite du personnage est chargé, on l'affiche animé en train de marcher
+    if (this.charImg && this.charImg.complete && this.charImg.naturalWidth > 0) {
+      const frameData = CHAR_FRAMES_X[this.animFrame % CHAR_FRAMES_X.length] || CHAR_FRAMES_X[0];
+      const srcX = frameData.x;
+      const srcY = CHAR_DIR_Y.DOWN;
+      const srcW = frameData.w;
+      const srcH = CHAR_FRAME_H;
+
+      // Ombre sous les pieds
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      this.ctx.beginPath();
+      this.ctx.ellipse(centerX, centerY - 15, 24, 8, 0, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Dessiner Bomberman animé (taille mise en valeur)
+      const scale = 1.3;
+      const drawW = CHAR_RENDER_W * scale;
+      const drawH = CHAR_RENDER_H * scale;
+
+      this.drawSprite(
+        this.charImg,
+        { x: srcX, y: srcY, w: srcW, h: srcH },
+        centerX - drawW / 2,
+        centerY - drawH - 10,
+        drawW,
+        drawH,
+        false
+      );
+    }
+
     this.ctx.fillStyle = '#e94560';
     this.ctx.font = '14px monospace';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText(text, CANVAS_W / 2, CANVAS_H / 2);
+    this.ctx.fillText(text, centerX, centerY + 25);
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -436,9 +483,12 @@ export class GameRenderer {
       const direction = player.direction || 'DOWN';
       const flipH = direction === 'RIGHT';
 
-      // Coordonnées source dans le spritesheet
-      const srcX = CHAR_START_X + frame * (CHAR_FRAME_W + CHAR_GAP_X);
+      // Frame source dans le spritesheet
+      const frameData = CHAR_FRAMES_X[frame % CHAR_FRAMES_X.length] || CHAR_FRAMES_X[0];
+      const srcX = frameData.x;
       const srcY = CHAR_DIR_Y[direction] || CHAR_DIR_Y.DOWN;
+      const srcW = frameData.w;
+      const srcH = CHAR_FRAME_H;
 
       // Position de destination : renderPos représente le CENTRE du joueur (ex: 0.5, 0.5).
       // On calcule les pixels du centre, puis on recule de la moitié de la taille du sprite.
@@ -452,7 +502,7 @@ export class GameRenderer {
 
       this.drawSprite(
         this.charImg,
-        { x: srcX, y: srcY, w: CHAR_FRAME_W, h: CHAR_FRAME_H },
+        { x: srcX, y: srcY, w: srcW, h: srcH },
         destX, destY,
         CHAR_RENDER_W, CHAR_RENDER_H,
         flipH,
