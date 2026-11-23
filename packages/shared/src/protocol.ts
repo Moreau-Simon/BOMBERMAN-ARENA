@@ -8,7 +8,8 @@
  * - Le serveur VALIDE, CALCULE et renvoie l'ÉTAT (ServerMessage)
  */
 
-import { Direction, GameState, Position } from './types';
+import { Direction, GameState } from './types';
+import { MapTheme } from './constants';
 
 // ─── Messages envoyés par le CLIENT au serveur ────────────────────────
 
@@ -29,14 +30,20 @@ export interface ClientPlaceBombMessage {
 /** Le joueur rejoint la partie. */
 export interface ClientJoinMessage {
   type: 'CLIENT_JOIN';
-  payload: { playerName: string };
+  payload: { playerName: string; isHost?: boolean };
+}
+
+/** Le joueur est prêt à jouer. */
+export interface ClientReadyMessage {
+  type: 'CLIENT_READY';
 }
 
 /** Union de tous les messages client possibles. */
 export type ClientMessage =
   | ClientInputMessage
   | ClientPlaceBombMessage
-  | ClientJoinMessage;
+  | ClientJoinMessage
+  | ClientReadyMessage;
 
 // ─── Messages envoyés par le SERVEUR aux clients ──────────────────────
 
@@ -67,6 +74,7 @@ export interface ServerPlayerJoinedMessage {
 /** La partie commence. */
 export interface ServerGameStartMessage {
   type: 'SERVER_GAME_START';
+  payload: { theme: MapTheme };
 }
 
 /** Union de tous les messages serveur possibles. */

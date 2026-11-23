@@ -27,7 +27,7 @@ export class NetworkManager {
    */
   private subscribeToEvents(): void {
     // Input → WebSocket
-    this.eventBus.on('input:move', (payload: any) => {
+    this.eventBus.on('input:move', (payload) => {
       this.send({ 
         type: 'CLIENT_INPUT', 
         payload: {
@@ -44,6 +44,11 @@ export class NetworkManager {
     // UI → Join
     this.eventBus.on('ui:play', (payload) => {
       this.connect(payload.playerName, payload.serverIp);
+    });
+
+    // Lobby → Ready
+    this.eventBus.on('lobby:ready', () => {
+      this.send({ type: 'CLIENT_READY' });
     });
 
     // UI → Quitter la partie
@@ -63,15 +68,17 @@ export class NetworkManager {
    * @param serverIp Adresse IP du serveur WebSocket (défaut: localhost).
    */
   connect(playerName: string, serverIp?: string): void {
-    const host = serverIp && serverIp.trim() !== '' ? serverIp.trim() : 'localhost';
+    const rawHost = serverIp ? serverIp.trim() : '';
+    const host = rawHost !== '' ? rawHost : 'localhost';
+    const isHost = host.toLowerCase() === 'localhost' || host === '127.0.0.1';
     const url = `ws://${host}:${SERVER_PORT}`;
-    console.log(`[NetworkManager] Connexion à ${url}...`);
+    console.log(`[NetworkManager] Connexion à ${url}... (isHost=${isHost})`);
 
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       console.log('[NetworkManager] Connecté !');
-      this.send({ type: 'CLIENT_JOIN', payload: { playerName } });
+      this.send({ type: 'CLIENT_JOIN', payload: { playerName, isHost } });
     };
 
     this.ws.onmessage = (event: MessageEvent) => {
@@ -85,7 +92,7 @@ export class NetworkManager {
 
     this.ws.onclose = () => {
       console.log('[NetworkManager] Déconnecté');
-      this.eventBus.emit('network:disconnected', undefined as unknown as void);
+      this.eventBus.emit('network:disconnected', undefined);
     };
 
     this.ws.onerror = () => {
@@ -102,7 +109,7 @@ export class NetworkManager {
       case 'SERVER_WELCOME':
         this.playerId = message.payload.playerId;
         this.eventBus.emit('network:connected', { playerId: this.playerId });
-        this.eventBus.emit('ui:show_game', undefined as unknown as void);
+        this.eventBus.emit('ui:show_game', undefined);
         break;
 
       case 'SERVER_STATE_UPDATE':
@@ -110,7 +117,7 @@ export class NetworkManager {
         break;
 
       case 'SERVER_GAME_START':
-        this.eventBus.emit('game:start', undefined as unknown as void);
+        this.eventBus.emit('game:start', message.payload);
         break;
 
       case 'SERVER_PLAYER_JOINED':

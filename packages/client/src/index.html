@@ -14,18 +14,6 @@
   <!-- ÉCRAN D'ACCUEIL                                                -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <div id="home-screen">
-    <!-- Barre de configuration joueur discrète en haut à gauche -->
-    <div class="player-config-pill">
-      <div class="config-field">
-        <label for="playerName">PSEUDO</label>
-        <input type="text" id="playerName" maxlength="12" placeholder="PLAYER" autocomplete="off">
-      </div>
-      <div class="config-field">
-        <label for="serverIp">IP SERVEUR</label>
-        <input type="text" id="serverIp" placeholder="localhost" value="localhost" autocomplete="off">
-      </div>
-    </div>
-
     <!-- Scène centrale du menu avec l'illustration et les 3 boutons du mockup -->
     <div class="menu-stage">
       <div class="menu-buttons-wrapper">
@@ -40,6 +28,37 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ÉCRAN DE CONFIGURATION JOUEUR (entre l'accueil et le lobby)     -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="play-config-screen">
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <h2 class="lobby-title">NOUVELLE PARTIE</h2>
+        <div class="arena-tag">REJOINDRE L'ARÈNE</div>
+      </div>
+
+      <div class="config-fields">
+        <div class="config-field">
+          <label for="playerName">PSEUDO</label>
+          <input type="text" id="playerName" maxlength="12" placeholder="PLAYER" autocomplete="off">
+        </div>
+        <div class="config-field">
+          <label for="serverIp">IP SERVEUR</label>
+          <input type="text" id="serverIp" placeholder="localhost" value="localhost" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="lobby-buttons-wrapper">
+        <button class="arcade-btn btn-metal" id="btn-confirm-play">JOUER</button>
+        <button class="arcade-btn btn-wood" id="btn-config-back">RETOUR</button>
+      </div>
+    </div>
+    <div class="home-footer">
+      BOMBERMAN ARENA © 2024 — CONFIGURATION
+    </div>
+  </div>
+
 
 
 
@@ -47,23 +66,35 @@
   <!-- ÉCRAN LOBBY                                                    -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <div id="lobby-screen">
-    <div class="lobby-header">
-      <h2 class="lobby-title">LOBBY DE COMBAT</h2>
-      <div class="arena-tag">ARÈNES : <span>URBAIN</span> VS <span>CAMPAGNE</span></div>
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <h2 class="lobby-title">LOBBY DE COMBAT</h2>
+        <div class="arena-tag">ARÈNES : <span>URBAIN</span> VS <span>CAMPAGNE</span></div>
+      </div>
+      <ul id="player-list" class="player-list"></ul>
+      <div class="lobby-buttons-wrapper">
+        <button class="arcade-btn btn-metal" id="btn-ready">READY</button>
+        <button class="arcade-btn btn-wood" id="btn-lobby-back">RETOUR</button>
+      </div>
     </div>
-    <ul id="player-list" class="player-list"></ul>
-    <button class="menu-btn primary" id="btn-ready">READY</button>
+    <div class="home-footer">
+      BOMBERMAN ARENA © 2024 — SALLE D'ATTENTE
+    </div>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <!-- ÉCRAN DE JEU                                                   -->
   <!-- ═══════════════════════════════════════════════════════════════ -->
   <div id="game-screen">
-    <div class="hud">
-      <span id="hud-player">PLAYER: ---</span>
-      <span id="hud-status" class="hud-status">CONNECTING...</span>
+    <div class="game-container">
+      <div class="hud">
+        <span id="hud-player">PLAYER: ---</span>
+        <div id="hud-bonuses" class="hud-bonuses"></div>
+        <span id="hud-status" class="hud-status">CONNECTING...</span>
+        <div id="hud-settings-slot"></div>
+      </div>
+      <canvas id="gameCanvas"></canvas>
     </div>
-    <canvas id="gameCanvas"></canvas>
   </div>
 
   <!-- Renderer principal (chargé dynamiquement via ts-node pour le dev) -->

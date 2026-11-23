@@ -4,12 +4,12 @@
  * Responsabilité unique (SRP) : poser des bombes, les faire exploser,
  * et calculer les zones d'explosion.
  *
- * NOTE : Ce module est un placeholder structuré.
- * La logique d'explosion complète sera implémentée ultérieurement.
+ * Les durées sont exprimées en ticks et non en millisecondes :
+ * une bombe explose au tick prévu, quel que soit le temps réel écoulé.
  */
 
-import { BombState, ExplosionState, Position, GameMap } from '@bomberman-arena/shared';
-import { BOMB_TIMER_MS, BOMB_RANGE, MAP_WIDTH, MAP_HEIGHT } from '@bomberman-arena/shared';
+import { BombState, ExplosionState, Position, GameMap, CrateState } from '@bomberman-arena/shared';
+import { BOMB_TIMER_TICKS, BOMB_RANGE, EXPLOSION_DURATION_TICKS, MAP_WIDTH, MAP_HEIGHT } from '@bomberman-arena/shared';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -23,10 +23,11 @@ export class BombManager {
    * Pose une bombe à la position donnée.
    * @param ownerId ID du joueur qui pose la bombe.
    * @param position Position de la bombe sur la grille.
+   * @param tick Tick courant de la partie.
    * @param range Portée de l'explosion.
    * @returns La bombe créée, ou null si une bombe existe déjà à cette position.
    */
-  placeBomb(ownerId: string, position: Position, range: number = BOMB_RANGE): BombState | null {
+  placeBomb(ownerId: string, position: Position, tick: number, range: number = BOMB_RANGE): BombState | null {
     // Vérifier qu'il n'y a pas déjà une bombe à cette position
     for (const bomb of this.bombs.values()) {
       if (bomb.position.x === position.x && bomb.position.y === position.y) {
@@ -39,7 +40,7 @@ export class BombManager {
       ownerId,
       position: { ...position },
       range,
-      placedAt: Date.now(),
+      placedAtTick: tick,
     };
 
     this.bombs.set(bomb.id, bomb);
@@ -50,17 +51,23 @@ export class BombManager {
    * Met à jour les bombes : détecte celles qui doivent exploser.
    * Appelé à chaque tick de la game loop.
    * @param map La carte actuelle (pour détruire les caisses).
-   * @returns Un objet avec les explosions et les ownerIds des bombes explosées.
+   * @param tick Le tick courant.
+   * @param crates État des caisses, avec leur résistance.
+   * @returns Les explosions, les propriétaires des bombes et les caisses détruites.
    */
-  update(map: GameMap): { explosions: ExplosionState[]; explodedOwners: string[] } {
-    const now = Date.now();
+  update(
+    map: GameMap,
+    tick: number,
+    crates: CrateState[] = []
+  ): { explosions: ExplosionState[]; explodedOwners: string[]; destroyedCrates: Array<{ position: Position; ownerId: string }> } {
     const newExplosions: ExplosionState[] = [];
     const explodedOwners: string[] = [];
+    const destroyedCrates: Array<{ position: Position; ownerId: string }> = [];
 
     for (const [id, bomb] of this.bombs.entries()) {
-      if (now - bomb.placedAt >= BOMB_TIMER_MS) {
+      if (tick - bomb.placedAtTick >= BOMB_TIMER_TICKS) {
         // La bombe explose !
-        const affected = this.calculateExplosion(bomb, map);
+        const affected = this.calculateExplosion(bomb, map, tick, crates, destroyedCrates);
         newExplosions.push(...affected);
         explodedOwners.push(bomb.ownerId);
         this.bombs.delete(id);
@@ -70,28 +77,36 @@ export class BombManager {
     // Ajouter les nouvelles explosions à la liste active
     this.explosions.push(...newExplosions);
 
-    // Nettoyer les explosions expirées (après 500ms)
-    this.explosions = this.explosions.filter(e => now - e.startedAt < 500);
+    // Nettoyer les explosions expirées
+    this.explosions = this.explosions.filter(e => tick - e.startedAtTick < EXPLOSION_DURATION_TICKS);
 
-    return { explosions: newExplosions, explodedOwners };
+    return { explosions: newExplosions, explodedOwners, destroyedCrates };
   }
 
   /**
    * Calcule les cases touchées par l'explosion d'une bombe.
    * L'explosion se propage en croix (haut, bas, gauche, droite)
-   * et s'arrête contre les murs indestructibles.
-   * Les caisses destructibles sont détruites (mises à 0).
+   * et s'arrête sur la première caisse rencontrée. Une caisse perd 1 PV ;
+   * elle n'est retirée de la carte qu'à 0 PV.
    *
    * @param bomb La bombe qui explose.
    * @param map La carte du jeu.
+   * @param tick Le tick courant.
+   * @param crates État des caisses.
+   * @param destroyedCrates Liste remplie des caisses tombées à 0 PV.
    * @returns Liste des positions touchées par l'explosion.
    */
-  private calculateExplosion(bomb: BombState, map: GameMap): ExplosionState[] {
-    const now = Date.now();
+  private calculateExplosion(
+    bomb: BombState,
+    map: GameMap,
+    tick: number,
+    crates: CrateState[],
+    destroyedCrates: Array<{ position: Position; ownerId: string }>
+  ): ExplosionState[] {
     const positions: ExplosionState[] = [];
 
     // Centre de l'explosion
-    positions.push({ position: { ...bomb.position }, startedAt: now });
+    positions.push({ position: { ...bomb.position }, startedAtTick: tick });
 
     // Propagation dans les 4 directions
     const directions = [
@@ -112,19 +127,29 @@ export class BombManager {
         // Mur indestructible : l'explosion s'arrête
         if (map[y][x] === 1) break;
 
-        // Caisse destructible : on la détruit et l'explosion s'arrête
+        // Caisse destructible : l'explosion s'arrête dessus, même si elle résiste
         if (map[y][x] === 2) {
-          map[y][x] = 0;
-          positions.push({ position: { x, y }, startedAt: now });
+          const crate = crates.find((c) => c.x === x && c.y === y);
+          if (!crate || --crate.hp <= 0) {
+            map[y][x] = 0;
+            destroyedCrates.push({ position: { x, y }, ownerId: bomb.ownerId });
+          }
+          positions.push({ position: { x, y }, startedAtTick: tick });
           break;
         }
 
         // Case vide : l'explosion continue
-        positions.push({ position: { x, y }, startedAt: now });
+        positions.push({ position: { x, y }, startedAtTick: tick });
       }
     }
 
     return positions;
+  }
+
+  /** Retire toutes les bombes et explosions (nouvelle manche). */
+  clear(): void {
+    this.bombs.clear();
+    this.explosions = [];
   }
 
   /** Récupère toutes les bombes actives. */
@@ -139,8 +164,10 @@ export class BombManager {
 
   /** Vérifie si une position est touchée par une explosion active. */
   isPositionExploding(pos: Position): boolean {
+    const px = Math.floor(pos.x);
+    const py = Math.floor(pos.y);
     return this.explosions.some(e =>
-      e.position.x === pos.x && e.position.y === pos.y
+      e.position.x === px && e.position.y === py
     );
   }
 }

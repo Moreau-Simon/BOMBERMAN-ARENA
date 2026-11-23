@@ -20,28 +20,20 @@
 
 import { EventBus } from './EventBus';
 import { InputManager } from './InputManager';
-// import { NetworkManager } from './NetworkManager'; // désactivé en mode local
+import { NetworkManager } from './NetworkManager';
 import { GameRenderer } from './GameRenderer';
 import { UIManager } from './UIManager';
-import { LocalGameEngine } from './LocalGameEngine';
-
-
 
 // ─── Initialisation ───────────────────────────────────────────────────
 
 /** Bus d'événements unique partagé par tous les modules. */
 const eventBus = new EventBus();
 
-/** Capture des entrées clavier. */
-const inputManager = new InputManager(eventBus);
+// Chaque module s'abonne au bus depuis son constructeur : l'instance n'a pas
+// besoin d'être conservée ici, le bus garde ses callbacks en vie.
+new InputManager(eventBus);
+new NetworkManager(eventBus);
+new GameRenderer(eventBus);
+new UIManager(eventBus);
 
-/** Moteur de jeu local (sans serveur). */
-const localGameEngine = new LocalGameEngine(eventBus);
-
-/** Rendu canvas. */
-const gameRenderer = new GameRenderer(eventBus);
-
-/** Gestion de l'UI (écran d'accueil, HUD). */
-const uiManager = new UIManager(eventBus);
-
-console.log('🎮 [Bomberman Arena] Client initialisé — EventBus prêt');
+console.log('🎮 [Bomberman Arena] Client initialisé — NetworkManager actif');

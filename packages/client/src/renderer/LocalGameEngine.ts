@@ -1,7 +1,7 @@
 import { EventBus } from './EventBus';
 import {
   MAP_HEIGHT, MAP_WIDTH, TICK_RATE_MS, PHYSICS_DT,
-  PLAYER_SPEED, SPAWN_POSITIONS, PLAYER_HITBOX_W, PLAYER_HITBOX_H,
+  PLAYER_SPEED, PLAYER_HITBOX_W, PLAYER_HITBOX_H,
   CORNER_ASSIST_THRESHOLD, BOMB_TIMER_MS, BOMB_RANGE,
   randomTheme, MapTheme,
 } from '@bomberman-arena/shared';
@@ -15,12 +15,12 @@ export class LocalGameEngine {
 
   private static readonly THEME_MESSAGES: Record<MapTheme, string> = {
     URBAN:       'Bienvenue dans ce chaos.\nSeuls les plus forts survivront.',
-    COUNTRYSIDE: 'Bienvenue à la campagne.\nLe calme sera votre meilleur allié.',
+    CAMPAGNE: 'Bienvenue à la campagne.\nLe calme sera votre meilleur allié.',
   };
 
   constructor(private eventBus: EventBus) {
     this.eventBus.on('ui:play', (payload: { playerName: string }) => {
-      this.playerName = payload.playerName;
+      this.playerName = payload.playerName || 'JOUEUR 1';
     });
 
     this.eventBus.on('lobby:ready', () => {
@@ -43,17 +43,21 @@ export class LocalGameEngine {
       console.log('[LocalGameEngine] Partie arrêtée suite à game:quit');
     });
 
-    // Mouvement
-    this.eventBus.on('input:move', (payload: { direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'; state: boolean }) => {
+    // Mouvement (support Joueur 1 et Joueur 2)
+    this.eventBus.on('input:move', (payload: { playerIndex?: number; direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'; state: boolean }) => {
       if (!this.gameState) return;
-      const player = this.gameState.players[0];
-      if (player) player.activeInputs[payload.direction] = payload.state;
+      const idx = payload.playerIndex ?? 0;
+      const player = this.gameState.players[idx];
+      if (player && player.isAlive) {
+        player.activeInputs[payload.direction] = payload.state;
+      }
     });
 
-    // Pose de bombe (touche espace)
-    this.eventBus.on('input:bomb', () => {
+    // Pose de bombe (support Joueur 1 et Joueur 2)
+    this.eventBus.on('input:bomb', (payload?: { playerIndex?: number }) => {
       if (!this.gameState) return;
-      const player = this.gameState.players[0];
+      const idx = payload?.playerIndex ?? 0;
+      const player = this.gameState.players[idx];
       if (!player || !player.isAlive) return;
       if (player.bombCount >= player.maxBombs) return;
 
@@ -75,7 +79,7 @@ export class LocalGameEngine {
 
       player.bombCount++;
       this.gameState.bombs.push(bomb);
-      console.log(`[LocalGameEngine] Bombe posée en (${col},${row})`);
+      console.log(`[LocalGameEngine] Bombe de ${player.name} posée en (${col},${row})`);
 
       // Explosion après BOMB_TIMER_MS
       setTimeout(() => this.explodeBomb(bombId), BOMB_TIMER_MS);
@@ -152,22 +156,22 @@ export class LocalGameEngine {
         if (y % 2 === 1 && x % 2 === 1) {
           row.push(1); // pilier indestructible
         } else {
+          // Zone de spawn protégée : L de 3 cases libres dans chaque coin
           const nearSpawn =
-            (x <= 1 && y <= 1) ||
-            (x >= MAP_WIDTH - 2 && y <= 1) ||
-            (x <= 1 && y >= MAP_HEIGHT - 2) ||
-            (x >= MAP_WIDTH - 2 && y >= MAP_HEIGHT - 2);
-          row.push(nearSpawn ? 0 : 2); // caisse partout sauf spawns
+            ((x <= 1 && y === 0) || (x === 0 && y <= 1)) ||
+            ((x >= MAP_WIDTH - 2 && y === 0) || (x === MAP_WIDTH - 1 && y <= 1)) ||
+            ((x <= 1 && y === MAP_HEIGHT - 1) || (x === 0 && y >= MAP_HEIGHT - 2)) ||
+            ((x >= MAP_WIDTH - 2 && y === MAP_HEIGHT - 1) || (x === MAP_WIDTH - 1 && y >= MAP_HEIGHT - 2));
+          row.push(nearSpawn ? 0 : 2); // caisse partout sauf aux spawns en L
         }
       }
       map.push(row);
     }
 
-    const spawn = { x: 1, y: 1 };
     const player = {
       id: 'local-player',
-      name: this.playerName,
-      position:  { x: spawn.x, y: spawn.y },
+      name: this.playerName || 'JOUEUR',
+      position:  { x: 0.5, y: 0.5 },
       velocity:  { x: 0, y: 0 },
       direction: 'DOWN' as const,
       isAlive:   true,
@@ -178,12 +182,17 @@ export class LocalGameEngine {
     };
 
     this.gameState = {
-      map, players: [player], bombs: [], explosions: [],
-      phase: 'PLAYING', tick: 0, theme: this.currentTheme,
+      map,
+      players: [player],
+      bombs: [],
+      explosions: [],
+      phase: 'PLAYING',
+      tick: 0,
+      theme: this.currentTheme,
     };
 
     this.eventBus.emit('state:update', this.gameState);
-    this.eventBus.emit('game:start', { theme: this.currentTheme } as any);
+    this.eventBus.emit('game:start', { theme: this.currentTheme });
     this.loopHandle = setInterval(() => this.tick(), TICK_RATE_MS);
   }
 
