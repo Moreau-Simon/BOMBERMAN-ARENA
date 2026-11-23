@@ -23,8 +23,8 @@
 /** Map des événements disponibles avec leurs types de payload. */
 export interface EventMap {
   // ─── Événements d'input (clavier → réseau) ────────────────────
-  'input:move': { direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', state: boolean };
-  'input:bomb': void;
+  'input:move': { playerIndex: number; direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', state: boolean };
+  'input:bomb': { playerIndex: number };
   'input:toggle_debug': void;
 
   // ─── Événements réseau → rendu ────────────────────────────────
@@ -35,7 +35,7 @@ export interface EventMap {
 
   // ─── Événements d'état du jeu ─────────────────────────────────
   'state:update': import('@bomberman-arena/shared').GameState;
-  'game:start': { theme?: import('@bomberman-arena/shared').MapTheme } | void;
+  'game:start': { theme?: import('@bomberman-arena/shared').MapTheme };
   'game:over': void;
   'game:quit': void;
   'game:spectate': void;

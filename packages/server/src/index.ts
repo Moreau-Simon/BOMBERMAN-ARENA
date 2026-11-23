@@ -19,18 +19,37 @@ import {
   ClientMessage,
   ServerMessage,
   SERVER_PORT,
+  parseClientMessage,
 } from '@bomberman-arena/shared';
 import { GameEngine } from './GameEngine';
+
+/** Intervalle du contrôle de connexion (ping/pong). */
+const HEARTBEAT_MS = 30_000;
 
 const wss = new WebSocketServer({ port: SERVER_PORT });
 const engine = new GameEngine();
 
 /** Map associant chaque WebSocket à l'ID du joueur. */
 const clientMap = new Map<WebSocket, string>();
-let gameStartTimeout: NodeJS.Timeout | null = null;
+
+/** Indique si une socket a répondu au dernier ping. */
+const socketAlive = new WeakMap<WebSocket, boolean>();
 
 console.log(`[Bomberman Arena] Serveur démarré sur le port ${SERVER_PORT}`);
 console.log('   En attente de joueurs...');
+
+const heartbeat = setInterval(() => {
+  for (const client of wss.clients) {
+    const socket = client as WebSocket;
+    if (socketAlive.get(socket) === false) {
+      socket.terminate();
+      continue;
+    }
+    socketAlive.set(socket, false);
+    socket.ping();
+  }
+}, HEARTBEAT_MS);
+heartbeat.unref();
 
 /**
  * Envoie un message typé à un client WebSocket.
@@ -64,68 +83,119 @@ engine.setOnTick((state) => {
 // ─── Gestion des connexions WebSocket ─────────────────────────────────
 wss.on('connection', (ws: WebSocket) => {
   console.log(' Joueur connecté');
+  socketAlive.set(ws, true);
+  ws.on('pong', () => socketAlive.set(ws, true));
 
   ws.on('message', (data: Buffer) => {
-    try {
-      const message: ClientMessage = JSON.parse(data.toString());
+    const message: ClientMessage | null = parseClientMessage(data.toString());
+    if (!message) {
+      sendToClient(ws, {
+        type: 'SERVER_ERROR',
+        payload: { message: 'Message invalide' },
+      });
+      return;
+    }
 
-      switch (message.type) {
-        case 'CLIENT_JOIN': {
-          const playerId = engine.addPlayer(message.payload.playerName);
+    switch (message.type) {
+      case 'CLIENT_JOIN': {
+        if (clientMap.has(ws)) return;
 
-          if (!playerId) {
-            sendToClient(ws, {
-              type: 'SERVER_ERROR',
-              payload: { message: 'Partie pleine !' },
-            });
-            return;
-          }
+        const isHost = !!message.payload.isHost;
+        const playerId = engine.addPlayer(message.payload.playerName, isHost);
 
-          clientMap.set(ws, playerId);
-          console.log(` Joueur "${message.payload.playerName}" rejoint (ID: ${playerId})`);
-
-          // Envoyer le welcome au joueur
+        if (!playerId) {
           sendToClient(ws, {
-            type: 'SERVER_WELCOME',
-            payload: { playerId, playerName: message.payload.playerName },
+            type: 'SERVER_ERROR',
+            payload: { message: 'Partie pleine !' },
           });
-
-          // Notifier les autres joueurs
-          broadcast({
-            type: 'SERVER_PLAYER_JOINED',
-            payload: { playerId, playerName: message.payload.playerName },
-          });
-
-          // Démarrer la boucle de jeu du serveur pour envoyer les mises à jour en temps réel
-          if (engine.getState().phase === 'WAITING') {
-            console.log(' Lancement du moteur de jeu !');
-            broadcast({ type: 'SERVER_GAME_START' });
-            engine.start();
-          }
-          break;
+          return;
         }
 
-        case 'CLIENT_INPUT':
-        case 'CLIENT_PLACE_BOMB': {
-          const playerId = clientMap.get(ws);
-          if (playerId) {
-            engine.handleClientMessage(playerId, message);
-          }
-          break;
+        clientMap.set(ws, playerId);
+        console.log(` Joueur "${message.payload.playerName}" rejoint (ID: ${playerId})`);
+
+        // Envoyer le welcome au joueur
+        sendToClient(ws, {
+          type: 'SERVER_WELCOME',
+          payload: { playerId, playerName: message.payload.playerName },
+        });
+
+        // Notifier les autres joueurs
+        broadcast({
+          type: 'SERVER_PLAYER_JOINED',
+          payload: { playerId, playerName: message.payload.playerName },
+        });
+
+        // Un joueur qui arrive en cours de partie ne doit pas rester au lobby.
+        // Après une fin de partie, il repasse par le lobby : c'est READY qui
+        // relance une manche, avec une nouvelle carte.
+        const state = engine.getState();
+        if (state.phase === 'PLAYING') {
+          sendToClient(ws, {
+            type: 'SERVER_GAME_START',
+            payload: { theme: state.theme ?? 'URBAN' },
+          });
         }
+
+        // Envoyer l'état actuel au nouveau joueur pour qu'il voie le lobby
+        broadcast({
+          type: 'SERVER_STATE_UPDATE',
+          payload: engine.getState(),
+        });
+        break;
       }
-    } catch (err) {
-      console.error(' Message invalide reçu :', err);
+
+      case 'CLIENT_READY': {
+        const playerId = clientMap.get(ws);
+        if (playerId) {
+          engine.handleClientMessage(playerId, message);
+          console.log(` Joueur ${playerId} est READY`);
+
+          // Broadcast l'état mis à jour (pour que tous voient les ✔ dans le lobby)
+          broadcast({
+            type: 'SERVER_STATE_UPDATE',
+            payload: engine.getState(),
+          });
+
+          // Si tous les joueurs sont prêts, lancer la partie (ou la manche suivante)
+          const phase = engine.getState().phase;
+          const canStart = phase === 'WAITING' || phase === 'GAME_OVER';
+          if (canStart && engine.allPlayersReady()) {
+            console.log(' Tous les joueurs sont prêts ! Lancement de la partie !');
+            engine.start();
+            broadcast({
+              type: 'SERVER_GAME_START',
+              payload: { theme: engine.getState().theme ?? 'URBAN' },
+            });
+          }
+        }
+        break;
+      }
+
+      case 'CLIENT_INPUT':
+      case 'CLIENT_PLACE_BOMB': {
+        const playerId = clientMap.get(ws);
+        if (playerId) {
+          engine.handleClientMessage(playerId, message);
+        }
+        break;
+      }
     }
   });
 
   ws.on('close', () => {
     const playerId = clientMap.get(ws);
-    if (playerId) {
-      engine.removePlayer(playerId);
-      clientMap.delete(ws);
-      console.log(` Joueur déconnecté (ID: ${playerId})`);
-    }
+    if (!playerId) return;
+
+    engine.removePlayer(playerId);
+    clientMap.delete(ws);
+    console.log(` Joueur déconnecté (ID: ${playerId})`);
+
+    // Sans ce broadcast, les autres gardent un joueur fantôme jusqu'au prochain tick
+    broadcast({
+      type: 'SERVER_STATE_UPDATE',
+      payload: engine.getState(),
+    });
   });
 
   ws.on('error', (err) => {

@@ -3,6 +3,9 @@
  * @description Types métier partagés entre le client et le serveur.
  */
 
+import { MapTheme } from './constants';
+import { BonusId } from './bonuses';
+
 /** Coordonnées d'une entité sur la grille (maintenant en flottants). */
 export interface Position {
   x: number;
@@ -18,13 +21,24 @@ export type GameMap = CellType[][];
 /** État d'un joueur, tel que transmis aux clients. */
 export interface PlayerState {
   id: string;
+  name?: string;
+  isHost?: boolean;
   position: Position;
   velocity: Position; // Nouveau : Vecteur de vitesse actuel
   direction: Direction;
   isAlive: boolean;
+  isReady: boolean;
   bombCount: number;
   maxBombs: number;
   speed: number;
+  hp: number;
+  maxHp: number;
+  rangeBonus: number;
+  speedBonus: number;
+  speedMalus: number;
+  effects: BonusId[];
+  effectExpiries: Partial<Record<BonusId, number>>;
+  invulnerableUntilTick: number;
   /** Touches actuellement enfoncées par ce joueur (géré par le serveur) */
   activeInputs: {
     UP: boolean;
@@ -39,12 +53,24 @@ export interface BombState {
   ownerId: string;
   position: Position; // La position restera entière (grille) pour les bombes
   range: number;
-  placedAt: number;
+  placedAtTick: number;
 }
 
 export interface ExplosionState {
   position: Position;
-  startedAt: number;
+  startedAtTick: number;
+}
+
+export type CrateAnimState = 'INTACT' | 'BURNING' | 'GROUND' | 'DESTROYING';
+
+export interface CrateState {
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  animState: CrateAnimState;
+  stateChangedAt?: number;
+  bonusId?: BonusId;
 }
 
 export interface GameState {
@@ -52,6 +78,8 @@ export interface GameState {
   players: PlayerState[];
   bombs: BombState[];
   explosions: ExplosionState[];
+  crates?: CrateState[];
   phase: 'WAITING' | 'COUNTDOWN' | 'PLAYING' | 'GAME_OVER';
   tick: number;
+  theme?: MapTheme;
 }

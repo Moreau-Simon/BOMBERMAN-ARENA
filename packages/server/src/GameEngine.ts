@@ -13,14 +13,27 @@
 
 import {
   GameState,
-  Direction,
   ClientMessage,
 } from '@bomberman-arena/shared';
-import { TICK_RATE_MS, PLAYER_SPEED, PHYSICS_DT } from '@bomberman-arena/shared';
-import { generateMap } from './MapGenerator';
+import {
+  TICK_RATE_MS,
+  PLAYER_SPEED,
+  PHYSICS_DT,
+  BOMB_RANGE,
+  INVULNERABILITY_TICKS,
+  randomTheme,
+} from '@bomberman-arena/shared';
+import { createRoundMap } from './MapGenerator';
 import { PlayerManager } from './PlayerManager';
 import { BombManager } from './BombManager';
+import { BonusManager } from './BonusManager';
 import { resolveMovement } from './CollisionSystem';
+
+/** Fréquence de réveil de la boucle : plusieurs réveils peuvent couvrir un tick. */
+const LOOP_INTERVAL_MS = 16;
+
+/** Nombre maximum de ticks rattrapés par réveil, pour éviter la spirale. */
+const MAX_STEPS_PER_WAKE = 5;
 
 /** Callback appelé à chaque tick avec le nouvel état du jeu. */
 export type OnTickCallback = (state: GameState) => void;
@@ -32,13 +45,18 @@ export type OnTickCallback = (state: GameState) => void;
 export class GameEngine {
   private playerManager = new PlayerManager();
   private bombManager = new BombManager();
+  private bonusManager = new BonusManager();
   private state: GameState;
   private loopInterval: ReturnType<typeof setInterval> | null = null;
   private onTick: OnTickCallback | null = null;
+  private lastWakeAt = 0;
+  private accumulator = 0;
 
   constructor() {
+    const round = createRoundMap('URBAN');
     this.state = {
-      map: generateMap(),
+      map: round.map,
+      crates: round.crates,
       players: [],
       bombs: [],
       explosions: [],
@@ -59,10 +77,11 @@ export class GameEngine {
   /**
    * Ajoute un joueur à la partie.
    * @param playerName Nom choisi par le joueur.
+   * @param isHost Indique si le joueur est l'hôte.
    * @returns L'ID du joueur, ou null si la partie est pleine.
    */
-  addPlayer(playerName: string): string | null {
-    const player = this.playerManager.addPlayer(playerName);
+  addPlayer(playerName: string, isHost: boolean = false): string | null {
+    const player = this.playerManager.addPlayer(playerName, isHost);
     if (!player) return null;
 
     this.state.players = this.playerManager.getAllPlayers();
@@ -76,6 +95,18 @@ export class GameEngine {
   removePlayer(playerId: string): void {
     this.playerManager.removePlayer(playerId);
     this.state.players = this.playerManager.getAllPlayers();
+
+    // Plus assez de joueurs pour continuer : la manche se termine
+    if (this.state.phase === 'PLAYING' && this.playerManager.count <= 1) {
+      this.state.phase = 'GAME_OVER';
+      this.stop();
+    }
+
+    // Plus personne : le prochain joueur doit arriver dans un lobby propre,
+    // pas sur la carte de la partie qui vient de se terminer.
+    if (this.playerManager.count === 0) {
+      this.resetRound();
+    }
   }
 
   /**
@@ -93,6 +124,9 @@ export class GameEngine {
       case 'CLIENT_PLACE_BOMB':
         this.handlePlaceBomb(playerId);
         break;
+      case 'CLIENT_READY':
+        this.playerManager.setReady(playerId);
+        break;
       // CLIENT_JOIN est géré directement par le serveur WebSocket
     }
   }
@@ -102,6 +136,8 @@ export class GameEngine {
    * La position doit être arrondie à l'entier le plus proche pour coller à la grille.
    */
   private handlePlaceBomb(playerId: string): void {
+    if (this.state.phase !== 'PLAYING') return;
+
     const player = this.playerManager.getPlayer(playerId);
     if (!player || !player.isAlive) return;
 
@@ -113,7 +149,12 @@ export class GameEngine {
       y: Math.floor(player.position.y),
     };
 
-    const bomb = this.bombManager.placeBomb(playerId, gridPos);
+    const bomb = this.bombManager.placeBomb(
+      playerId,
+      gridPos,
+      this.state.tick,
+      BOMB_RANGE + player.rangeBonus
+    );
     if (bomb) {
       player.bombCount++;
     }
@@ -121,39 +162,104 @@ export class GameEngine {
 
   /**
    * Démarre la boucle de jeu.
-   * Exécutée à intervalles réguliers (TICK_RATE_MS).
+   * Après une fin de partie, la manche est d'abord remise à zéro.
    */
   start(): void {
     if (this.loopInterval) return; // Déjà en cours
 
-    this.state.phase = 'PLAYING';
-    console.log(`[GameEngine] Boucle de jeu démarrée (tick rate: ${TICK_RATE_MS}ms)`);
+    this.playerManager.resetForNewRound();
+    this.playerManager.clearReady();
+    this.bombManager.clear();
 
-    this.loopInterval = setInterval(() => {
-      this.tick();
-    }, TICK_RATE_MS);
+    const theme = randomTheme();
+    const round = createRoundMap(theme);
+
+    this.state = {
+      map: round.map,
+      crates: round.crates,
+      players: this.playerManager.getAllPlayers(),
+      bombs: [],
+      explosions: [],
+      phase: 'PLAYING',
+      tick: 0,
+      theme,
+    };
+    console.log(`[GameEngine] Boucle de jeu démarrée (tick rate: ${TICK_RATE_MS}ms, thème: ${theme})`);
+
+    this.lastWakeAt = Date.now();
+    this.accumulator = 0;
+    this.loopInterval = setInterval(() => this.step(), LOOP_INTERVAL_MS);
   }
 
-  private tick(): void {
+  /**
+   * Un réveil de la boucle : exécute autant de ticks fixes que le temps
+   * écoulé le permet, sans jamais dépasser MAX_STEPS_PER_WAKE.
+   */
+  private step(): void {
+    const now = Date.now();
+    this.accumulator += now - this.lastWakeAt;
+    this.lastWakeAt = now;
+
+    let steps = 0;
+    while (this.accumulator >= TICK_RATE_MS && steps < MAX_STEPS_PER_WAKE) {
+      this.tick();
+      this.accumulator -= TICK_RATE_MS;
+      steps++;
+    }
+
+    // Retard trop important : on abandonne le temps accumulé au lieu de courir après
+    if (steps === MAX_STEPS_PER_WAKE) {
+      this.accumulator = 0;
+    }
+
+    if (this.state.phase === 'GAME_OVER') {
+      this.stop();
+    }
+  }
+
+  /** Remet la partie dans son état d'avant-manche. */
+  private resetRound(): void {
+    this.playerManager.resetForNewRound();
+    this.bombManager.clear();
+    const round = createRoundMap('URBAN');
+    this.state = {
+      map: round.map,
+      crates: round.crates,
+      players: this.playerManager.getAllPlayers(),
+      bombs: [],
+      explosions: [],
+      phase: 'WAITING',
+      tick: 0,
+    };
+  }
+
+  /**
+   * Un pas de simulation. Public pour permettre de rejouer une partie
+   * tick par tick dans les tests, sans dépendre de l'horloge.
+   */
+  tick(): void {
     this.state.tick++;
 
     // 0. Application de la physique (Mouvement Continu)
     for (const player of this.playerManager.getAllPlayers()) {
       if (!player.isAlive) continue;
 
+      this.bonusManager.update(player, this.state.tick);
+      const speed = PLAYER_SPEED * player.speed;
+
       let vx = 0;
       let vy = 0;
 
-      if (player.activeInputs.UP) vy -= PLAYER_SPEED;
-      if (player.activeInputs.DOWN) vy += PLAYER_SPEED;
-      if (player.activeInputs.LEFT) vx -= PLAYER_SPEED;
-      if (player.activeInputs.RIGHT) vx += PLAYER_SPEED;
+      if (player.activeInputs.UP) vy -= speed;
+      if (player.activeInputs.DOWN) vy += speed;
+      if (player.activeInputs.LEFT) vx -= speed;
+      if (player.activeInputs.RIGHT) vx += speed;
 
       // Normalisation en diagonale pour ne pas aller plus vite
       if (vx !== 0 && vy !== 0) {
         const length = Math.sqrt(vx * vx + vy * vy);
-        vx = (vx / length) * PLAYER_SPEED;
-        vy = (vy / length) * PLAYER_SPEED;
+        vx = (vx / length) * speed;
+        vy = (vy / length) * speed;
       }
 
       player.velocity = { x: vx, y: vy };
@@ -169,7 +275,12 @@ export class GameEngine {
     }
 
     // 1. Mise à jour des bombes
-    const { explosions: newExplosions, explodedOwners } = this.bombManager.update(this.state.map);
+    const crates = this.state.crates ?? [];
+    const { explodedOwners, destroyedCrates } = this.bombManager.update(
+      this.state.map,
+      this.state.tick,
+      crates
+    );
 
     // 1b. Rendre les bombes au joueur quand elles explosent
     for (const ownerId of explodedOwners) {
@@ -179,12 +290,32 @@ export class GameEngine {
       }
     }
 
+    // 1c. Une caisse détruite donne directement son objet au poseur de la bombe
+    for (const destroyed of destroyedCrates) {
+      const crate = crates.find(
+        (c) => c.x === destroyed.position.x && c.y === destroyed.position.y
+      );
+      if (!crate?.bonusId) continue;
+
+      const owner = this.playerManager.getPlayer(destroyed.ownerId);
+      if (owner && owner.isAlive) {
+        this.bonusManager.apply(owner, crate.bonusId, this.state.tick);
+      }
+    }
+    if (destroyedCrates.length > 0) {
+      this.state.crates = crates.filter(
+        (crate) => !destroyedCrates.some(
+          (d) => d.position.x === crate.x && d.position.y === crate.y
+        )
+      );
+    }
+
     // 2. Vérification : un joueur est-il touché par une explosion ?
     for (const player of this.playerManager.getAllPlayers()) {
       if (!player.isAlive) continue;
 
       if (this.bombManager.isPositionExploding(player.position)) {
-        this.playerManager.killPlayer(player.id);
+        this.playerManager.hitPlayer(player.id, this.state.tick, INVULNERABILITY_TICKS);
       }
     }
 
@@ -218,5 +349,10 @@ export class GameEngine {
   /** Récupère l'état actuel du jeu (snapshot). */
   getState(): GameState {
     return { ...this.state };
+  }
+
+  /** Vérifie si tous les joueurs sont prêts. */
+  allPlayersReady(): boolean {
+    return this.playerManager.allReady();
   }
 }

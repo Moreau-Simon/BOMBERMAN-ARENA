@@ -14,8 +14,8 @@
     "dev:server": "npm run dev --workspace=@bomberman-arena/server",
     "test": "jest --passWithNoTests",
     "test:server": "jest --passWithNoTests --projects packages/server",
-    "lint": "eslint 'packages/*/src/**/*.ts'",
-    "format": "prettier --write 'packages/*/src/**/*.ts'",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "format": "prettier --write packages/*/src/**/*.ts",
     "typecheck": "tsc -b packages/shared packages/server packages/client",
     "clean": "rm -rf packages/*/dist"
   },

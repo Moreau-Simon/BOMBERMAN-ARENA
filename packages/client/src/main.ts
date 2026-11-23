@@ -21,13 +21,18 @@ try {
   if (fs.existsSync(jpgPath) && !fs.existsSync(pngPath)) {
     fs.copyFileSync(jpgPath, pngPath);
   }
-} catch (e) {}
+} catch {
+  // L'image de fond est optionnelle : son absence ne doit rien bloquer.
+}
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 780,
     height: 720,
-    resizable: true,
+    useContentSize: true,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
     title: 'Bomberman Arena',
     webPreferences: {
       nodeIntegration: true,
@@ -35,7 +40,7 @@ function createWindow(): void {
     },
   });
   // Forward renderer console messages to the main process (terminal)
-  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+  mainWindow.webContents.on('console-message', (event, level, message) => {
     console.log(`[Renderer] ${message}`);
   });
 
@@ -45,15 +50,6 @@ function createWindow(): void {
   mainWindow.setMenuBarVisibility(false);
 
   // ── IPC Handlers ──────────────────────────────────────────────────
-  ipcMain.on('window:toggle_fullscreen', () => {
-    const isFull = mainWindow.isFullScreen();
-    mainWindow.setFullScreen(!isFull);
-  });
-
-  ipcMain.handle('window:is_fullscreen', () => {
-    return mainWindow.isFullScreen();
-  });
-
   ipcMain.on('app:quit', () => {
     app.quit();
   });

@@ -14,9 +14,9 @@
  */
 
 import { EventBus } from './EventBus';
-import { GameState, CellType, PlayerState, Direction } from '@bomberman-arena/shared';
-import { MAP_WIDTH, MAP_HEIGHT, TILE_SIZE } from '@bomberman-arena/shared';
+import { GameState, CellType, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, EXPLOSION_DURATION_TICKS } from '@bomberman-arena/shared';
 import * as path from 'path';
+import * as fs from 'fs';
 
 
 // ─── Chemin vers les assets ─────────────────────────────────────────
@@ -29,8 +29,18 @@ const ASSETS_DIR = path.resolve(__dirname, '..', '..', '..', '..', 'assets');
  */
 const THEME_TILESETS: Record<string, string> = {
   URBAN:       path.join(ASSETS_DIR, 'maps', 'urbain.png'),
-  COUNTRYSIDE: path.join(ASSETS_DIR, 'maps', 'campagne.png'),
+  CAMPAGNE: path.join(ASSETS_DIR, 'maps', 'campagne.png'),
   // FUTURE: FOREST: path.join(ASSETS_DIR, 'maps', 'forest.png'),
+};
+
+/**
+ * Thèmes dessinés comme une image de carte entière, et non comme une planche
+ * de tuiles. `x`/`y` donnent le coin haut-gauche de la première case jouable
+ * dans l'image, `pitch` la taille d'une case dans l'image en pixels.
+ * Le reste de l'image est du décor, affiché autour de l'arène.
+ */
+const THEME_ARENAS: Record<string, { x: number; y: number; pitch: number }> = {
+  CAMPAGNE: { x: 99, y: 55, pitch: 45 },
 };
 
 
@@ -127,23 +137,35 @@ const CHAR_RENDER_H = 58;
 // de "tic-tac" (la bombe pulse).
 // ────────────────────────────────────────────────────────────────────
 
+// ─── Coordonnées exactes des bombes dans items-effects.png ──────────
+// Mesurées au pixel près (sprites 16x16 purs, sans décalage) :
 const BOMB_FRAMES: SrcRect[] = [
-  { x: 1,  y: 3,  w: 14, h: 15 },
-  { x: 18, y: 2,  w: 15, h: 16 },
-  { x: 35, y: 1,  w: 16, h: 17 },
+  { x: 4,  y: 7, w: 16, h: 16 }, // Bombe normale
+  { x: 19, y: 7, w: 17, h: 16 }, // Bombe pulsation moyenne
+  { x: 36, y: 7, w: 16, h: 16 }, // Bombe pulsation large
 ];
 
-// ─── Coordonnées des explosions dans items-effects.png ──────────────
-//
-// Les explosions sont les grandes croix de flammes sur la droite.
-// Chaque croix = 1 phase d'animation.
-// On découpe les morceaux : centre, bras horizontal, bras vertical,
-// et bouts (extrémités).
-// ────────────────────────────────────────────────────────────────────
+// ─── Coordonnées des 4 frames d'explosion dans items-effects.png ────
+// Grille SNES 16x16 de droite à gauche :
+const EXPLOSION_FRAMES: SrcRect[] = [
+  { x: 144, y: 48, w: 16, h: 16 }, // 0: étincelle initiale
+  { x: 112, y: 48, w: 16, h: 16 }, // 1: déploiement
+  { x: 80,  y: 48, w: 16, h: 16 }, // 2: flamme pleine
+  { x: 48,  y: 48, w: 16, h: 16 }, // 3: dissipation
+];
 
-const EXPLOSION_CENTER: SrcRect = { x: 146, y: 52, w: 16, h: 16 };
-const EXPLOSION_H: SrcRect = { x: 146, y: 68, w: 16, h: 16 };  // bras horizontal
-const EXPLOSION_V: SrcRect = { x: 146, y: 36, w: 16, h: 16 };  // bras vertical
+// ─── Coordonnées exactes des 7 sprites de poubelle (poubelle.png) ────
+// Mesurées au pixel près d'après le spritesheet source (800x600) :
+// Les poubelles reposent toutes à Y = 90 (le sol).
+const POUBELLE_FRAMES: SrcRect[] = [
+  { x: 49,  y: 45, w: 37, h: 46 }, // 0: poubelle intacte fermée
+  { x: 94,  y: 45, w: 35, h: 46 }, // 1: secousse / ouverture 1
+  { x: 141, y: 45, w: 34, h: 46 }, // 2: secousse / ouverture 2
+  { x: 185, y: 45, w: 34, h: 46 }, // 3: ouverture 3
+  { x: 229, y: 55, w: 46, h: 36 }, // 4: écrasement 1
+  { x: 284, y: 55, w: 46, h: 36 }, // 5: écrasement 2
+  { x: 337, y: 60, w: 46, h: 31 }, // 6: tas de débris au sol
+];
 
 // ─── Dimensions du canvas avec bordures ────────────────────────────
 const CANVAS_W = (MAP_WIDTH + 2) * TILE_SIZE;   // 15 * 48 = 720
@@ -161,10 +183,14 @@ export class GameRenderer {
 
   // ─── Spritesheets ─────────────────────────────────────────────
   private mapImg!: HTMLImageElement;
+  /** Planche urbaine, utilisée pour les caisses des thèmes en mode fond de carte. */
+  private crateImg!: HTMLImageElement;
   private charImg!: HTMLImageElement;
   private effectsImg!: HTMLImageElement;
+  private poubelleImg!: HTMLImageElement;
+  private poubelleCanvas: HTMLCanvasElement | null = null;
   private imagesLoaded = 0;
-  private readonly totalImages = 3;
+  private readonly totalImages = 5;
 
   // ─── Animation ────────────────────────────────────────────────
   private animFrame = 0;
@@ -183,28 +209,83 @@ export class GameRenderer {
     // CRUCIAL : désactiver l'anti-aliasing pour le pixel art
     this.ctx.imageSmoothingEnabled = false;
 
-    // Charger les 3 spritesheets
+    // Charger les spritesheets
     this.mapImg = this.loadImage(THEME_TILESETS['URBAN']);
+    this.crateImg = this.loadImage(THEME_TILESETS['URBAN']);
     this.charImg = this.loadImage(path.join(ASSETS_DIR, 'mobs', 'bomberman.png'));
     this.effectsImg = this.loadImage(path.join(ASSETS_DIR, 'effects', 'items-effects.png'));
+    this.poubelleImg = this.loadImage(path.join(ASSETS_DIR, 'blocks', 'poubelle.png'), () => {
+      this.preprocessPoubelleImage();
+    });
 
     this.subscribeToEvents();
     this.startRenderLoop();
   }
 
   /**
-   * Charge une image et incrémente le compteur de chargement.
+   * Pré-traite poubelle.png : supprime le fond blanc (→ transparent).
+   * Stocke le résultat directement dans poubelleCanvas pour un rendu instantané.
    */
-  private loadImage(filePath: string): HTMLImageElement {
+  private preprocessPoubelleImage(): void {
+    const img = this.poubelleImg;
+    if (!img.naturalWidth || !img.naturalHeight) return;
+
+    try {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      const cCtx = c.getContext('2d', { willReadFrequently: true });
+      if (!cCtx) return;
+
+      cCtx.drawImage(img, 0, 0);
+      const imageData = cCtx.getImageData(0, 0, c.width, c.height);
+      const data = imageData.data;
+
+      // Remplacer les pixels blancs / quasi-blancs par du transparent
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) {
+          data[i + 3] = 0;
+        }
+      }
+
+      cCtx.putImageData(imageData, 0, 0);
+      this.poubelleCanvas = c;
+      console.log('[GameRenderer] 🗑️ Fond blanc de poubelle.png supprimé avec succès !');
+    } catch (e) {
+      console.warn('[GameRenderer] Preprocessing poubelle échoué, utilisation de l\'original :', e);
+    }
+  }
+
+  /**
+   * Charge une image et incrémente le compteur de chargement.
+   * Utilise une Data URI base64 pour éviter le tainting du canvas par Electron / Chromium.
+   */
+  private loadImage(filePath: string, onLoaded?: () => void): HTMLImageElement {
     const img = new Image();
-    img.src = filePath;
+
     img.onload = () => {
       this.imagesLoaded++;
       console.log(`[GameRenderer] ✅ Sprite chargé (${this.imagesLoaded}/${this.totalImages}): ${path.basename(filePath)}`);
+      if (onLoaded) onLoaded();
     };
     img.onerror = () => {
+      this.imagesLoaded++;
       console.error(`[GameRenderer] ❌ Erreur de chargement: ${filePath}`);
     };
+
+    try {
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filePath).toLowerCase();
+        const mime = ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : 'image/png';
+        const b64 = fs.readFileSync(filePath).toString('base64');
+        img.src = `data:${mime};base64,${b64}`;
+      } else {
+        img.src = filePath;
+      }
+    } catch {
+      img.src = filePath;
+    }
+
     return img;
   }
 
@@ -214,11 +295,15 @@ export class GameRenderer {
   private subscribeToEvents(): void {
     this.eventBus.on('state:update', (state) => {
       this.currentState = state;
+      if (state.theme && state.theme !== this.currentTheme) {
+        this.currentTheme = state.theme;
+        this.reloadMapTileset(state.theme);
+      }
     });
 
     // Quand la partie démarre, recharger le tileset selon le thème choisi
-    this.eventBus.on('game:start', (payload: any) => {
-      const theme: string = payload?.theme ?? 'URBAN';
+    this.eventBus.on('game:start', (payload) => {
+      const theme = payload?.theme ?? this.currentState?.theme ?? 'URBAN';
       if (theme !== this.currentTheme) {
         console.log(`[GameRenderer] Changement de thème : ${this.currentTheme} → ${theme}`);
         this.currentTheme = theme;
@@ -242,18 +327,13 @@ export class GameRenderer {
     });
   }
 
-  /** Recharge le tileset de la map selon le thème. */
+  /** Recharge le tileset de la map selon le thème (base64 pour Electron). */
   private reloadMapTileset(theme: string): void {
     const tilesetPath = THEME_TILESETS[theme] ?? THEME_TILESETS['URBAN'];
     this.imagesLoaded--; // on va recharger 1 image
-    const img = new Image();
-    img.src = tilesetPath;
-    img.onload = () => {
-      this.imagesLoaded++;
+    this.mapImg = this.loadImage(tilesetPath, () => {
       console.log(`[GameRenderer] ✅ Tileset rechargé pour thème "${theme}"`);
-    };
-    img.onerror = () => console.error(`[GameRenderer] ❌ Tileset introuvable pour "${theme}": ${tilesetPath}`);
-    this.mapImg = img;
+    });
   }
 
   /**
@@ -318,7 +398,10 @@ export class GameRenderer {
       return;
     }
 
-    this.renderBorderWalls();
+    // Un thème en mode fond de carte apporte son propre décor : pas de bordure
+    if (!THEME_ARENAS[this.currentTheme]) {
+      this.renderBorderWalls();
+    }
     this.renderMap(this.currentState.map);
     this.renderBombs(this.currentState);
     this.renderExplosions(this.currentState);
@@ -423,11 +506,20 @@ export class GameRenderer {
   }
 
   /**
-   * Dessine la zone jouable : sol vert + blocs + caisses.
+   * Dessine la zone jouable : sol vert + blocs + caisses / poubelles.
    * Chaque case est d'abord remplie d'herbe, puis le bloc/caisse
    * est dessiné par-dessus si nécessaire.
    */
   private renderMap(map: CellType[][]): void {
+    const arena = THEME_ARENAS[this.currentTheme];
+    if (arena) {
+      this.renderArenaBackground(arena, map);
+      return;
+    }
+
+    const isUrban = this.currentTheme === 'URBAN';
+    const crates = this.currentState?.crates;
+
     for (let y = 0; y < MAP_HEIGHT; y++) {
       for (let x = 0; x < MAP_WIDTH; x++) {
         const destX = OFFSET_X + x * TILE_SIZE;
@@ -442,10 +534,99 @@ export class GameRenderer {
           // Bloc indestructible (béton gris)
           this.drawSprite(this.mapImg, MAP_TILES.INDESTRUCTIBLE, destX, destY);
         } else if (cell === 2) {
-          // Caisse destructible (brique rouge)
-          this.drawSprite(this.mapImg, MAP_TILES.DESTRUCTIBLE, destX, destY);
+          if (isUrban) {
+            // En thème urbain : toujours dessiner une poubelle (drawPoubelle gère son propre fallback)
+            const crate = crates?.find((c: any) => c.x === x && c.y === y);
+            this.drawPoubelle(destX, destY, crate);
+          } else {
+            // Caisse destructible classique (brique rouge)
+            this.drawSprite(this.mapImg, MAP_TILES.DESTRUCTIBLE, destX, destY);
+          }
         }
       }
+    }
+  }
+
+  /**
+   * Dessine un thème fourni sous forme d'image de carte entière.
+   * L'image est mise à l'échelle pour que ses cases jouables tombent pile
+   * sur l'arène ; ce qui déborde reste visible et sert de décor.
+   */
+  private renderArenaBackground(
+    arena: { x: number; y: number; pitch: number },
+    map: CellType[][],
+  ): void {
+    const img = this.mapImg;
+    if (!img.complete || !img.naturalWidth) return;
+
+    const scale = TILE_SIZE / arena.pitch;
+    const dx = OFFSET_X - arena.x * scale;
+    const dy = OFFSET_Y - arena.y * scale;
+    this.ctx.drawImage(img, dx, dy, img.naturalWidth * scale, img.naturalHeight * scale);
+
+    // Les caisses ne sont pas peintes dans l'image : elles sont posées par-dessus
+    for (let y = 0; y < MAP_HEIGHT; y++) {
+      for (let x = 0; x < MAP_WIDTH; x++) {
+        if (map[y][x] !== 2) continue;
+        this.drawSprite(
+          this.crateImg,
+          MAP_TILES.DESTRUCTIBLE,
+          OFFSET_X + x * TILE_SIZE,
+          OFFSET_Y + y * TILE_SIZE,
+        );
+      }
+    }
+  }
+
+  /**
+   * Dessine une poubelle urbaine selon son état (intacte, en feu, au sol, ou transition de destruction).
+   * Parfaitement centrée horizontalement sur la case 48x48 et posée au sol.
+   */
+  private drawPoubelle(destX: number, destY: number, crate?: any): void {
+    const imgSource: CanvasImageSource = this.poubelleCanvas || this.poubelleImg;
+    if (!imgSource) {
+      this.ctx.fillStyle = '#5a6a5a';
+      this.ctx.fillRect(destX + 8, destY + 6, TILE_SIZE - 16, TILE_SIZE - 10);
+      return;
+    }
+
+    let frameIndex = 0;
+    if (crate) {
+      if (crate.animState === 'BURNING') {
+        frameIndex = 1 + (Math.floor(Date.now() / 150) % 3);
+      } else if (crate.animState === 'GROUND') {
+        frameIndex = 4 + (Math.floor(Date.now() / 180) % 3);
+      } else if (crate.animState === 'DESTROYING') {
+        const elapsed = Date.now() - (crate.stateChangedAt || Date.now());
+        const progress = Math.min(1, Math.max(0, elapsed / 450));
+        frameIndex = Math.min(6, 1 + Math.floor(progress * 6));
+      } else {
+        frameIndex = 0;
+      }
+    }
+
+    frameIndex = Math.min(Math.max(0, frameIndex), POUBELLE_FRAMES.length - 1);
+    const frame = POUBELLE_FRAMES[frameIndex];
+
+    // Dimensions réelles du sprite pixel art
+    const drawW = frame.w;
+    const drawH = frame.h;
+
+    // Centrage horizontal parfait sur la case 48x48
+    const drawX = destX + Math.round((TILE_SIZE - drawW) / 2);
+    // Alignement au bas de la case pour reposer naturellement sur le sol
+    const drawY = destY + (TILE_SIZE - drawH) - 1;
+
+    try {
+      this.ctx.drawImage(
+        imgSource,
+        frame.x, frame.y, frame.w, frame.h,
+        drawX, drawY, drawW, drawH,
+      );
+    } catch {
+      // Fallback si l'image n'est pas encore prête
+      this.ctx.fillStyle = '#5a6a5a';
+      this.ctx.fillRect(destX + 8, destY + 6, TILE_SIZE - 16, TILE_SIZE - 10);
     }
   }
 
@@ -465,17 +646,14 @@ export class GameRenderer {
       // 1. Interpolation fluide (Lissage exponentiel)
       let renderPos = this.lastPositions.get(player.id);
       if (!renderPos) {
-        // Première fois qu'on voit le joueur, on snap à sa position
         renderPos = { x: player.position.x, y: player.position.y };
       } else {
-        // Lissage : on rapproche la position affichée de la vraie position serveur
-        // 0.3 est le facteur de lissage (plus proche de 1 = plus rigide, proche de 0 = plus "glissant")
         renderPos.x += (player.position.x - renderPos.x) * 0.4;
         renderPos.y += (player.position.y - renderPos.y) * 0.4;
       }
       this.lastPositions.set(player.id, renderPos);
 
-      // 2. Détection du mouvement pour l'animation (avec fallback de sécurité)
+      // 2. Détection du mouvement pour l'animation
       const vx = player.velocity?.x || 0;
       const vy = player.velocity?.y || 0;
       const isMoving = Math.abs(vx) > 0.1 || Math.abs(vy) > 0.1;
@@ -490,15 +668,14 @@ export class GameRenderer {
       const srcW = frameData.w;
       const srcH = CHAR_FRAME_H;
 
-      // Position de destination : renderPos représente le CENTRE du joueur (ex: 0.5, 0.5).
-      // On calcule les pixels du centre, puis on recule de la moitié de la taille du sprite.
+      // pixelX et pixelY sont au centre de la hitbox du joueur
       const pixelX = OFFSET_X + renderPos.x * TILE_SIZE;
       const pixelY = OFFSET_Y + renderPos.y * TILE_SIZE;
 
-      // Le Bomberman est plus haut que large, on centre horizontalement
-      // et on s'arrange pour que ses pieds (bas du sprite) touchent le bas de sa hitbox.
-      const destX = pixelX - CHAR_RENDER_W / 2;
-      const destY = pixelY - CHAR_RENDER_H / 2 - 4; // petit ajustement visuel (-4) pour la hauteur
+      // Centrage horizontal parfait
+      const destX = Math.round(pixelX - CHAR_RENDER_W / 2);
+      // Pieds posés au sol de la case (1px de marge sur le bas de la tuile)
+      const destY = Math.round(pixelY + (TILE_SIZE / 2) - CHAR_RENDER_H - 1);
 
       this.drawSprite(
         this.charImg,
@@ -508,16 +685,25 @@ export class GameRenderer {
         flipH,
       );
 
-      // Cadre doré pour le joueur local (centré sur le joueur)
-      if (player.id === this.playerId) {
-        this.ctx.strokeStyle = '#FFD700';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(
-          pixelX - TILE_SIZE / 2 + 3,
-          pixelY - TILE_SIZE / 2 + 3,
-          TILE_SIZE - 6,
-          TILE_SIZE - 6,
-        );
+      // Indicateur visuel : pseudo du joueur
+      const isLocal = this.playerId !== null ? player.id === this.playerId : i === 0;
+      if (state.players.length > 1 || isLocal) {
+        const tagText = (player.name || '').trim() || `P${i + 1}`;
+        const tagColor = isLocal ? '#38ef7d' : '#ff4757';
+
+        // Si le joueur est en haut de la map, afficher en dessous pour ne pas couper
+        const nearTop = renderPos.y < 1;
+        const tagY = nearTop ? (destY + CHAR_RENDER_H + 12) : (destY - 4);
+
+        this.ctx.save();
+        this.ctx.font = 'bold 12px monospace';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillStyle = tagColor;
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeText(tagText, pixelX, tagY);
+        this.ctx.fillText(tagText, pixelX, tagY);
+        this.ctx.restore();
       }
     }
   }
@@ -527,17 +713,21 @@ export class GameRenderer {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Dessine les bombes actives avec l'animation de "tic-tac" (pulsation).
-   * Utilise les sprites de bombe de items-effects.png.
+   * Dessine les bombes actives avec l'animation de pulsation.
+   * Parfaitement centrées dans la case 48x48.
    */
   private renderBombs(state: GameState): void {
+    const bombSize = 40; // 40px dans une case 48px = 4px de marge de chaque côté
     for (const bomb of state.bombs) {
-      const destX = OFFSET_X + bomb.position.x * TILE_SIZE;
-      const destY = OFFSET_Y + bomb.position.y * TILE_SIZE;
+      const cellX = OFFSET_X + bomb.position.x * TILE_SIZE;
+      const cellY = OFFSET_Y + bomb.position.y * TILE_SIZE;
+
+      const destX = cellX + Math.round((TILE_SIZE - bombSize) / 2);
+      const destY = cellY + Math.round((TILE_SIZE - bombSize) / 2);
 
       // Cycle entre les 3 frames de bombe pour l'effet pulsant
       const bombSrc = BOMB_FRAMES[this.animFrame % BOMB_FRAMES.length];
-      this.drawSprite(this.effectsImg, bombSrc, destX + 4, destY + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+      this.drawSprite(this.effectsImg, bombSrc, destX, destY, bombSize, bombSize);
     }
   }
 
@@ -546,20 +736,29 @@ export class GameRenderer {
   // ═══════════════════════════════════════════════════════════════
 
   /**
-   * Dessine les explosions actives.
-   * Utilise le sprite du centre de l'explosion + un overlay de couleur pulsant.
+   * Dessine les explosions actives avec animation de flamme évolutive.
+   * Cadrées pleine case sur chaque tuile touchée.
    */
   private renderExplosions(state: GameState): void {
     for (const explosion of state.explosions) {
       const destX = OFFSET_X + explosion.position.x * TILE_SIZE;
       const destY = OFFSET_Y + explosion.position.y * TILE_SIZE;
 
-      // Sprite d'explosion depuis items-effects.png
-      this.drawSprite(this.effectsImg, EXPLOSION_CENTER, destX, destY);
+      // Frame animée selon la progression de l'explosion, en ticks
+      const elapsedTicks = Math.max(0, state.tick - explosion.startedAtTick);
+      const progress = Math.min(1, elapsedTicks / EXPLOSION_DURATION_TICKS);
+      const frameIdx = Math.min(
+        EXPLOSION_FRAMES.length - 1,
+        Math.floor(progress * EXPLOSION_FRAMES.length)
+      );
+      const flameSrc = EXPLOSION_FRAMES[frameIdx];
 
-      // Overlay pulsant par-dessus pour l'effet de chaleur
-      const alpha = 0.3 + Math.sin(Date.now() / 60) * 0.2;
-      this.ctx.fillStyle = `rgba(255, 200, 0, ${alpha})`;
+      // Rendu du sprite de flamme pleine tuile
+      this.drawSprite(this.effectsImg, flameSrc, destX, destY, TILE_SIZE, TILE_SIZE);
+
+      // Halo de chaleur lumineux
+      const alpha = Math.max(0, 0.25 - progress * 0.2);
+      this.ctx.fillStyle = `rgba(255, 180, 0, ${alpha})`;
       this.ctx.fillRect(destX, destY, TILE_SIZE, TILE_SIZE);
     }
   }

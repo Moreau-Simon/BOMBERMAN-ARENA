@@ -38,8 +38,40 @@ export const CORNER_ASSIST_THRESHOLD = 0.35;
 /** Délai avant l'explosion d'une bombe en millisecondes. */
 export const BOMB_TIMER_MS = 3000;
 
+/** Délai avant l'explosion d'une bombe en ticks. */
+export const BOMB_TIMER_TICKS = Math.ceil(BOMB_TIMER_MS / TICK_RATE_MS);
+
+/** Durée d'affichage d'une explosion en millisecondes. */
+export const EXPLOSION_DURATION_MS = 500;
+
+/** Durée d'affichage d'une explosion en ticks. */
+export const EXPLOSION_DURATION_TICKS = Math.ceil(EXPLOSION_DURATION_MS / TICK_RATE_MS);
+
 /** Portée par défaut de l'explosion d'une bombe en nombre de cases. */
 export const BOMB_RANGE = 2;
+
+/** Bornes des bonus appliqués aux joueurs. */
+export const MAX_BOMBS = 5;
+export const MAX_RANGE_BONUS = 4;
+export const MAX_SPEED_BONUS = 2;
+export const MIN_SPEED_MULTIPLIER = 0.6;
+export const MAX_SPEED_MULTIPLIER = 2;
+export const MAX_HP = 2;
+
+/** Invincibilité après un coup, pour ne perdre qu'un PV par explosion. */
+export const INVULNERABILITY_TICKS = Math.ceil(1500 / TICK_RATE_MS);
+
+/** Répartition des caisses : 1 spéciale garantie, 14 % de renforcées, le reste normales. */
+export const REINFORCED_CRATE_CHANCE = 0.14;
+
+/**
+ * Probabilité qu'une case libre contienne une caisse destructible au départ.
+ * En dessous de 1, la carte garde des trous et change à chaque manche.
+ */
+export const DESTRUCTIBLE_DENSITY = 0.85;
+
+/** Longueur maximale d'un pseudo. */
+export const MAX_PLAYER_NAME_LENGTH = 12;
 
 /** Nombre maximum de joueurs dans une partie. */
 export const MAX_PLAYERS = 4;
@@ -47,14 +79,14 @@ export const MAX_PLAYERS = 4;
 /** Port WebSocket du serveur. */
 export const SERVER_PORT = 8080;
 
-/** Positions de spawn des joueurs. */
+/** Positions de spawn des joueurs (centre des 4 cases de coin). */
 export const SPAWN_POSITIONS = [
-  { x: 1, y: 1 },
-  { x: MAP_WIDTH - 1.5, y: 1 },
-  { x: 1, y: MAP_HEIGHT - 1.5 },
-  { x: MAP_WIDTH - 1.5, y: MAP_HEIGHT - 1.5 },
+  { x: 0.5, y: 0.5 },
+  { x: MAP_WIDTH - 0.5, y: 0.5 },
+  { x: 0.5, y: MAP_HEIGHT - 0.5 },
+  { x: MAP_WIDTH - 0.5, y: MAP_HEIGHT - 0.5 },
 ];
-export const MAP_THEMES = ['URBAN', 'COUNTRYSIDE'] as const;
+export const MAP_THEMES = ['URBAN', 'CAMPAGNE'] as const;
 export type MapTheme = typeof MAP_THEMES[number];
 
 /** Retourne aléatoirement l'un des thèmes de carte définis. */

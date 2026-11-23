@@ -94,8 +94,7 @@ function checkMapCollision(hitbox: AABB, map: GameMap): boolean {
 function applyCornerAssist(
   pos: Position,
   velX: number,
-  velY: number,
-  map: GameMap
+  velY: number
 ): Position {
   const newPos = { ...pos };
 
@@ -171,7 +170,7 @@ export function resolveMovement(
 
   // 3. Appliquer l'assistance de coin (Corner Assist) si bloqué sur un axe
   if (collidedX || collidedY) {
-    const assisted = applyCornerAssist({ x: newX, y: newY }, velX, velY, map);
+    const assisted = applyCornerAssist({ x: newX, y: newY }, velX, velY);
     // Vérifier que l'assistance ne nous pousse pas dans un mur
     if (!checkMapCollision(getPlayerHitbox(assisted), map)) {
       return assisted;

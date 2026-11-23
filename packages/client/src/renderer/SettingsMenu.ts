@@ -1,4 +1,5 @@
 import { EventBus } from './EventBus';
+import { MapTheme, MAP_THEMES, themeBonusIds, BONUSES, bonusImageUrl } from '@bomberman-arena/shared';
 
 export interface SettingsMenuOptions {
   onQuitGame?: () => void;
@@ -51,6 +52,7 @@ const LUCIDE_ICONS = {
 export class SettingsMenu {
   private burgerBtn: HTMLButtonElement;
   private overlayEl: HTMLDivElement;
+  private btnQuitAction!: HTMLButtonElement;
   private isOpened = false;
   private ipcRenderer: any = null;
 
@@ -66,7 +68,16 @@ export class SettingsMenu {
     this.overlayEl = this.createOverlay();
     this.setupShortcuts();
 
-    document.body.appendChild(this.burgerBtn);
+    const slot = document.getElementById('hud-settings-slot');
+    if (slot) {
+      slot.appendChild(this.burgerBtn);
+    } else {
+      this.burgerBtn.style.position = 'fixed';
+      this.burgerBtn.style.top = '16px';
+      this.burgerBtn.style.right = '16px';
+      this.burgerBtn.style.zIndex = '1500';
+      document.body.appendChild(this.burgerBtn);
+    }
     document.body.appendChild(this.overlayEl);
   }
 
@@ -83,6 +94,7 @@ export class SettingsMenu {
       if (typeof window !== 'undefined' && (window as any).require) {
         this.ipcRenderer = (window as any).require('electron').ipcRenderer;
       } else if (typeof require !== 'undefined') {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         this.ipcRenderer = require('electron').ipcRenderer;
       }
     } catch {
@@ -95,15 +107,11 @@ export class SettingsMenu {
     const btn = document.createElement('button');
     btn.id = 'burger-settings-btn';
     btn.title = 'Paramètres (Échap)';
-    btn.style.position = 'fixed';
-    btn.style.top = '16px';
-    btn.style.right = '16px';
-    btn.style.zIndex = '1500';
-    btn.style.width = '44px';
-    btn.style.height = '44px';
-    btn.style.borderRadius = '10px';
+    btn.style.width = '32px';
+    btn.style.height = '32px';
+    btn.style.borderRadius = '8px';
     btn.style.background = 'rgba(22, 33, 62, 0.9)';
-    btn.style.border = '2px solid rgba(255, 107, 53, 0.5)';
+    btn.style.border = '1.5px solid rgba(255, 107, 53, 0.5)';
     btn.style.backdropFilter = 'blur(6px)';
     btn.style.cursor = 'pointer';
     btn.style.display = 'none'; // Masqué par défaut (visible seulement en jeu)
@@ -111,8 +119,9 @@ export class SettingsMenu {
     btn.style.justifyContent = 'center';
     btn.style.padding = '0';
     btn.style.color = '#ff6b35';
-    btn.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.4)';
-    btn.style.transition = 'all 0.25s ease';
+    btn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.4)';
+    btn.style.transition = 'all 0.2s ease';
+    btn.style.flexShrink = '0';
 
     // Injection du SVG Lucide Menu
     btn.innerHTML = LUCIDE_ICONS.menu;
@@ -153,6 +162,8 @@ export class SettingsMenu {
     overlay.style.zIndex = '2000';
     overlay.style.opacity = '0';
     overlay.style.transition = 'opacity 0.25s ease';
+    overlay.style.overflowY = 'auto';
+    overlay.style.padding = '16px 0';
 
     // Carte centrale
     const card = document.createElement('div');
@@ -161,7 +172,9 @@ export class SettingsMenu {
     card.style.borderRadius = '16px';
     card.style.padding = '32px 28px';
     card.style.width = '90%';
-    card.style.maxWidth = '420px';
+    card.style.maxWidth = '640px';
+    card.style.maxHeight = 'calc(100vh - 48px)';
+    card.style.overflowY = 'auto';
     card.style.boxShadow = '0 0 35px rgba(255, 107, 53, 0.35), 0 10px 40px rgba(0, 0, 0, 0.7)';
     card.style.display = 'flex';
     card.style.flexDirection = 'column';
@@ -191,36 +204,46 @@ export class SettingsMenu {
     header.appendChild(subtitle);
     card.appendChild(header);
 
-    // 2. Section Volume Sonore
-    const volumeSection = this.createVolumeSection();
-    card.appendChild(volumeSection);
+    const { tabs, generalPanel, guidePanel } = this.createTabs();
+    card.appendChild(tabs);
 
-    // 3. Section Aide / Commandes
-    const controlsSection = this.createControlsSection();
-    card.appendChild(controlsSection);
+    generalPanel.appendChild(this.createVolumeSection());
 
-    // 4. Groupe de boutons d'action
+    guidePanel.appendChild(this.createControlsSection());
+    for (const theme of MAP_THEMES) {
+      guidePanel.appendChild(this.createBonusSection(theme));
+    }
+
+    // Groupe de boutons d'action
     const btnGroup = document.createElement('div');
     btnGroup.style.display = 'flex';
     btnGroup.style.flexDirection = 'column';
     btnGroup.style.gap = '10px';
     btnGroup.style.marginTop = '4px';
 
-    // Bouton Quitter le Jeu
-    const btnQuitApp = document.createElement('button');
-    btnQuitApp.innerHTML = `${LUCIDE_ICONS.logOut}<span>QUITTER LE JEU</span>`;
-    this.styleActionButton(btnQuitApp, '#ff4757');
-    btnQuitApp.addEventListener('click', () => this.quitApplication());
-    btnGroup.appendChild(btnQuitApp);
+    this.btnQuitAction = document.createElement('button');
+    this.updateQuitButtonLabel();
+    this.styleActionButton(this.btnQuitAction, '#ff4757');
+    this.btnQuitAction.addEventListener('click', () => {
+      const isGame = this.options?.isGameActive ? this.options.isGameActive() : false;
+      if (isGame && this.options?.onQuitGame) {
+        this.close();
+        this.options.onQuitGame();
+      } else {
+        this.quitApplication();
+      }
+    });
+    btnGroup.appendChild(this.btnQuitAction);
 
-    // Bouton Reprendre
     const btnResume = document.createElement('button');
     btnResume.innerHTML = `${LUCIDE_ICONS.x}<span>REPRENDRE</span>`;
     this.styleActionButton(btnResume, '#ffffff', true);
     btnResume.addEventListener('click', () => this.close());
     btnGroup.appendChild(btnResume);
 
-    card.appendChild(btnGroup);
+    generalPanel.appendChild(btnGroup);
+    card.appendChild(generalPanel);
+    card.appendChild(guidePanel);
     overlay.appendChild(card);
 
     // Clic en dehors pour fermer
@@ -229,6 +252,142 @@ export class SettingsMenu {
     });
 
     return overlay;
+  }
+
+  private createTabs(): {
+    tabs: HTMLDivElement;
+    generalPanel: HTMLDivElement;
+    guidePanel: HTMLDivElement;
+  } {
+    const tabs = document.createElement('div');
+    tabs.style.display = 'flex';
+    tabs.style.gap = '8px';
+    tabs.style.borderBottom = '1px solid rgba(255, 255, 255, 0.15)';
+    tabs.style.paddingBottom = '8px';
+
+    const generalButton = this.createTabButton('GÉNÉRAL');
+    const guideButton = this.createTabButton('FONCTIONNEMENT');
+    tabs.append(generalButton, guideButton);
+
+    const generalPanel = this.createTabPanel();
+    const guidePanel = this.createTabPanel();
+    guidePanel.style.display = 'none';
+
+    const select = (showGuide: boolean): void => {
+      generalPanel.style.display = showGuide ? 'none' : 'flex';
+      guidePanel.style.display = showGuide ? 'flex' : 'none';
+      this.styleTabButton(generalButton, !showGuide);
+      this.styleTabButton(guideButton, showGuide);
+    };
+
+    generalButton.addEventListener('click', () => select(false));
+    guideButton.addEventListener('click', () => select(true));
+    select(false);
+
+    return { tabs, generalPanel, guidePanel };
+  }
+
+  private createTabButton(label: string): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.innerText = label;
+    button.style.flex = '1';
+    button.style.padding = '9px 10px';
+    button.style.borderRadius = '8px 8px 0 0';
+    button.style.cursor = 'pointer';
+    button.style.fontFamily = "'Inter', sans-serif";
+    button.style.fontSize = '0.78rem';
+    button.style.fontWeight = '700';
+    button.style.letterSpacing = '1px';
+    return button;
+  }
+
+  private styleTabButton(button: HTMLButtonElement, active: boolean): void {
+    button.style.background = active ? '#ff6b35' : 'rgba(255, 255, 255, 0.05)';
+    button.style.color = active ? '#0f172a' : '#ced6e0';
+    button.style.border = active ? '1px solid #ff6b35' : '1px solid rgba(255, 255, 255, 0.15)';
+  }
+
+  private createTabPanel(): HTMLDivElement {
+    const panel = document.createElement('div');
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.gap = '16px';
+    panel.style.minHeight = '0';
+    return panel;
+  }
+
+  private createBonusSection(theme: MapTheme): HTMLDivElement {
+    const box = document.createElement('div');
+    box.style.background = 'rgba(15, 20, 35, 0.6)';
+    box.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+    box.style.borderRadius = '12px';
+    box.style.padding = '12px 14px';
+
+    const title = document.createElement('div');
+    title.innerText = theme === 'CAMPAGNE' ? 'CAMPAGNE — BONUS' : 'URBAIN — BONUS ET MALUS';
+    title.style.color = theme === 'CAMPAGNE' ? '#4ecca3' : '#ff6b35';
+    title.style.fontWeight = '700';
+    title.style.fontSize = '0.78rem';
+    title.style.letterSpacing = '1px';
+    title.style.marginBottom = '10px';
+    box.appendChild(title);
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    grid.style.gap = '8px';
+
+    for (const id of themeBonusIds(theme)) {
+      const bonus = BONUSES[id];
+
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '8px';
+      row.style.background = 'rgba(255, 255, 255, 0.05)';
+      row.style.borderRadius = '8px';
+      row.style.padding = '5px 6px';
+
+      const img = document.createElement('img');
+      img.src = bonusImageUrl(id);
+      img.alt = '';
+      img.style.width = '30px';
+      img.style.height = '30px';
+      img.style.objectFit = 'contain';
+      img.style.flexShrink = '0';
+      row.appendChild(img);
+
+      const text = document.createElement('div');
+      text.style.display = 'flex';
+      text.style.flexDirection = 'column';
+      text.style.gap = '2px';
+
+      const label = document.createElement('span');
+      label.innerText = bonus.label;
+      label.style.color = '#ffffff';
+      label.style.fontSize = '0.72rem';
+      label.style.fontWeight = '700';
+
+      const description = document.createElement('span');
+      description.innerText = bonus.description;
+      description.style.color = '#ced6e0';
+      description.style.fontSize = '0.68rem';
+
+      text.append(label, description);
+      row.appendChild(text);
+      grid.appendChild(row);
+    }
+
+    const rules = document.createElement('p');
+    rules.innerText = 'Caisse 1 coup : rien. Caisse 2 coups : objet garanti. Caisse spéciale : méga-bonus. Effets permanents sauf le sac poubelle (5 s).';
+    rules.style.margin = '10px 0 0 0';
+    rules.style.color = '#9aa6b8';
+    rules.style.fontSize = '0.66rem';
+    rules.style.lineHeight = '1.5';
+
+    box.appendChild(grid);
+    box.appendChild(rules);
+    return box;
   }
 
   // ── Section Volume avec Slider ───────────────────────────────────────
@@ -420,9 +579,18 @@ export class SettingsMenu {
     this.close();
   }
 
+  private updateQuitButtonLabel(): void {
+    if (!this.btnQuitAction) return;
+    const isGame = this.options?.isGameActive ? this.options.isGameActive() : false;
+    this.btnQuitAction.innerHTML = isGame
+      ? `${LUCIDE_ICONS.logOut}<span>QUITTER LA PARTIE</span>`
+      : `${LUCIDE_ICONS.logOut}<span>QUITTER LE JEU</span>`;
+  }
+
   // ── Ouverture / Fermeture du modal ───────────────────────────────────
   public open(): void {
     this.isOpened = true;
+    this.updateQuitButtonLabel();
     this.overlayEl.style.display = 'flex';
     requestAnimationFrame(() => {
       this.overlayEl.style.opacity = '1';

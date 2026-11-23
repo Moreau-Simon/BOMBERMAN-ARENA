@@ -144,51 +144,43 @@ body {
     inset -2px -2px 0 #a1887f;
 }
 
-/* Pill de configuration Joueur (discrète en haut à gauche) */
-.player-config-pill {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 14px;
-  background: rgba(15, 23, 42, 0.88);
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  z-index: 100;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-}
-
-.player-config-pill .config-field {
+/* Champs de configuration joueur (écran NOUVELLE PARTIE) */
+.config-fields {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
+  width: 100%;
+  min-width: 300px;
 }
 
-.player-config-pill label {
+.config-fields .config-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-fields label {
   font-size: 8px;
   color: #ffd32a;
   letter-spacing: 1.5px;
   font-family: 'PressStart', monospace;
 }
 
-.player-config-pill input {
+.config-fields input {
   font-family: 'PressStart', monospace;
   font-size: 10px;
   color: #ffffff;
   background: rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 10px 12px;
   outline: none;
-  width: 130px;
+  width: 100%;
   text-align: center;
   transition: all 0.2s ease;
 }
 
-.player-config-pill input:focus {
+.config-fields input:focus {
   border-color: #ffd32a;
   box-shadow: 0 0 12px rgba(255, 211, 42, 0.5);
   background: rgba(0, 0, 0, 0.7);
@@ -205,16 +197,49 @@ body {
   z-index: 1;
 }
 
-/* ─── Écran Lobby ───────────────────────────────────────────────────── */
-#lobby-screen {
+/* ─── Écrans Lobby et Configuration : Même Thème que l'accueil ─────── */
+#lobby-screen,
+#play-config-screen {
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 28px;
   height: 100vh;
-  background: linear-gradient(118deg, #0d1424 0%, #16243b 50%, #0b1a13 100%);
+  width: 100vw;
+  background: #080c14 url('../../../assets/menu_bg.jpg') no-repeat center center;
+  background-size: cover;
   position: relative;
+  overflow: hidden;
+}
+
+#lobby-screen::before,
+#play-config-screen::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(8, 12, 20, 0.65);
+  backdrop-filter: blur(5px);
+  z-index: 1;
+}
+
+.lobby-container {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 2px solid rgba(255, 211, 42, 0.4);
+  border-radius: 16px;
+  padding: 32px 40px;
+  min-width: 380px;
+  max-width: 90vw;
+  box-shadow: 0 0 35px rgba(0, 0, 0, 0.8), 0 0 25px rgba(255, 211, 42, 0.2);
+  backdrop-filter: blur(8px);
 }
 
 .lobby-header {
@@ -223,11 +248,11 @@ body {
 
 .lobby-title {
   font-family: 'PressStart', monospace;
-  font-size: 20px;
+  font-size: 18px;
   color: #ffd32a;
-  letter-spacing: 4px;
-  text-shadow: 0 0 15px rgba(255, 211, 42, 0.5);
-  margin-bottom: 10px;
+  letter-spacing: 3px;
+  text-shadow: 0 0 15px rgba(255, 211, 42, 0.6);
+  margin-bottom: 12px;
 }
 
 .arena-tag {
@@ -251,21 +276,34 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-width: 340px;
+  width: 100%;
+  min-width: 300px;
 }
 
 .player-list li {
   font-family: 'PressStart', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: #ffffff;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1.5px solid rgba(255, 255, 255, 0.15);
-  border-radius: 10px;
-  padding: 14px 24px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 20px;
   text-align: center;
   letter-spacing: 2px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+}
+
+.lobby-buttons-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+}
+
+.lobby-buttons-wrapper .arcade-btn {
+  width: 100%;
 }
 
 /* ─── Écran de Jeu Dynamique (Adaptive Game Screen) ─────────────────── */
@@ -276,18 +314,43 @@ body {
   justify-content: center;
   height: 100vh;
   width: 100vw;
-  background: #0d111a;
+  background: #0d111a url('../../../assets/menu_bg.jpg') no-repeat center center;
+  background-size: cover;
+  position: relative;
+  padding: 8px 16px;
+  overflow: hidden;
+}
+
+/* Voile flouté devant l'image de fond, teinté selon le thème */
+#game-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--screen-tint, rgba(8, 12, 20, 0.65));
+  backdrop-filter: blur(6px);
+  z-index: 0;
   transition: background 0.5s ease;
+}
+
+.game-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: 95vw;
+  max-height: 96vh;
 }
 
 /* Ambiance Urbaine en Jeu */
 #game-screen.theme-urban {
-  background: radial-gradient(circle at center, #1b263b 0%, #080d14 100%);
+  --screen-tint: radial-gradient(ellipse at center, rgba(27, 38, 59, 0.55) 0%, rgba(12, 20, 31, 0.8) 55%, rgba(5, 9, 15, 0.92) 100%);
 }
 
 #game-screen.theme-urban #gameCanvas {
   border: 3px solid #ff6b35;
-  box-shadow: 0 0 30px rgba(255, 107, 53, 0.45), inset 0 0 20px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 35px rgba(255, 107, 53, 0.45), inset 0 0 20px rgba(0, 0, 0, 0.7);
 }
 
 #game-screen.theme-urban .hud {
@@ -300,25 +363,25 @@ body {
 }
 
 /* Ambiance Campagne en Jeu */
-#game-screen.theme-countryside {
-  background: radial-gradient(circle at center, #163324 0%, #06140d 100%);
+#game-screen.theme-campagne {
+  --screen-tint: radial-gradient(ellipse at center, rgba(22, 51, 36, 0.55) 0%, rgba(11, 30, 21, 0.8) 55%, rgba(4, 14, 9, 0.92) 100%);
 }
 
-#game-screen.theme-countryside #gameCanvas {
+#game-screen.theme-campagne #gameCanvas {
   border: 3px solid #2ed573;
-  box-shadow: 0 0 30px rgba(46, 213, 115, 0.45), inset 0 0 20px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 0 35px rgba(46, 213, 115, 0.45), inset 0 0 20px rgba(0, 0, 0, 0.7);
 }
 
-#game-screen.theme-countryside .hud {
+#game-screen.theme-campagne .hud {
   color: #7bed9f;
 }
 
-#game-screen.theme-countryside .hud-status {
+#game-screen.theme-campagne .hud-status {
   color: #2ed573;
   text-shadow: 0 0 10px rgba(46, 213, 115, 0.6);
 }
 
-/* ─── Canvas de jeu ─────────────────────────────────────────────────── */
+/* ─── Canvas de jeu adaptatif ───────────────────────────────────────── */
 #gameCanvas {
   border: 3px solid #444;
   box-shadow:
@@ -326,19 +389,79 @@ body {
     inset 0 0 20px rgba(0, 0, 0, 0.4);
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  /* Taille native conservée : jamais d'étirement non entier du pixel art */
+  max-height: min(624px, 88vh);
+  max-width: min(720px, 94vw);
+  width: auto;
+  height: auto;
+  aspect-ratio: 720 / 624;
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* ─── HUD ───────────────────────────────────────────────────────────── */
+/* ─── HUD intégré au-dessus de la map ───────────────────────────────── */
 .hud {
   display: flex;
   justify-content: space-between;
-  width: 720px;
-  padding: 10px 0;
-  font-size: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 4px 8px 4px;
+  font-size: 11px;
   color: #888;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   transition: color 0.4s ease;
+}
+
+#hud-settings-slot {
+  display: flex;
+  align-items: center;
+  margin-left: 14px;
+}
+
+.hud-bonuses {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 28px;
+}
+
+.hud-bonus {
+  position: relative;
+  display: inline-flex;
+}
+
+.hud-bonuses img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+.hud-bonus-count {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 2px;
+  border-radius: 7px;
+  background: #ff6b35;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+}
+
+.hud-bonuses img.temporary {
+  animation: bonus-fade 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes bonus-fade {
+  from { opacity: 1; }
+  to { opacity: 0.4; }
 }
 
 .hud-status {
